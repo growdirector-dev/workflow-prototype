@@ -4,35 +4,35 @@
 
 @layer base {
   :root {
-    --background: 222 36% 11%;
-    --foreground: 32 50% 94%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
 
-    --card: 222 36% 13%;
-    --card-foreground: 32 50% 94%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
 
-    --popover: 222 36% 13%;
-    --popover-foreground: 32 50% 94%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 39 96% 61%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 32 50% 94%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 217 24% 20%;
-    --muted-foreground: 32 18% 74%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 217 24% 20%;
-    --accent-foreground: 32 50% 94%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 32 50% 94%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 217 24% 26%;
-    --input: 217 24% 26%;
-    --ring: 39 96% 61%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
     --step-trigger: 145 63% 42%;
     --step-condition: 38 92% 50%;
@@ -77,64 +77,13 @@
   body {
     @apply bg-background text-foreground;
     min-height: 100vh;
-    background:
-      radial-gradient(circle at top, rgba(255, 183, 77, 0.2), transparent 35%),
-      linear-gradient(180deg, #1f2937 0%, #111827 100%);
-    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    background: hsl(var(--background));
+    font-family: "Avenir Next", "Inter", "Segoe UI", sans-serif;
     line-height: 1.5;
     font-weight: 400;
   }
 
   code {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  }
-}
-
-.page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.hero {
-  width: min(640px, 100%);
-  padding: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 28px;
-  background: rgba(17, 24, 39, 0.72);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(14px);
-}
-
-.eyebrow {
-  margin: 0 0 12px;
-  color: #fbbf24;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-size: 0.78rem;
-}
-
-h1 {
-  margin: 0;
-  font-size: clamp(3rem, 8vw, 5.5rem);
-  line-height: 0.95;
-}
-
-.lead {
-  margin: 20px 0 0;
-  max-width: 36ch;
-  color: rgba(244, 239, 230, 0.88);
-  font-size: 1.05rem;
-}
-
-@media (max-width: 640px) {
-  .hero {
-    padding: 28px;
-    border-radius: 22px;
-  }
-
-  .lead {
-    font-size: 1rem;
   }
 }

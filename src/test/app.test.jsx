@@ -3,9 +3,10 @@ import { render, screen } from "@testing-library/react";
 import App from "@/App.jsx";
 
 describe("App", () => {
-  it("renders the landing page heading", () => {
+  it("redirects to workflows and renders the placeholder page", async () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: /hello world/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /workflows/i })).toBeInTheDocument();
+    expect(screen.getByText(/workflow list and editor content will be migrated next/i)).toBeInTheDocument();
   });
 });
