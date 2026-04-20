@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils.js';
 import { DEVICES } from '@/lib/mockData.js';
@@ -44,7 +44,7 @@ function validateWorkflow(wf) {
   if (wf.trigger.type === 'sensor' && (!wf.trigger.sensors || wf.trigger.sensors.length === 0)) errors.push('sensors');
   if (wf.trigger.type === 'schedule' && (!wf.trigger.times || wf.trigger.times.length === 0)) errors.push('times');
   if (!wf.steps || wf.steps.length === 0) errors.push('steps');
-  const stepErrors = (wf.steps || []).map((s) => {
+  const stepErrors = (wf.steps || []).map(s => {
     const e = [];
     if (!s.deviceId) e.push('device');
     if (wf.trigger.type === 'schedule' && s.action === 'On' && !s.params?.duration) e.push('duration');
@@ -54,7 +54,6 @@ function validateWorkflow(wf) {
 }
 
 function detectConflicts(wf) {
-  // Returns map of stepId -> conflict message
   const conflicts = {};
   (wf.steps || []).forEach(step => {
     const device = DEVICES.find(d => d.id === step.deviceId);
@@ -62,7 +61,6 @@ function detectConflicts(wf) {
     if (device.status === 'rule') {
       conflicts[step.deviceId] = `Device shared with Rule (${device.ruleName}) with the same time — change time before saving`;
     }
-    // workflow conflict with same priority would need more complex logic - simplified here
   });
   return conflicts;
 }
@@ -106,15 +104,30 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
   const [saveAttempted, setSaveAttempted] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Keep local state in sync if parent updates (e.g. toggle from library)
+  const updateWorkflow = useCallback((updated) => {
+    setWorkflow(updated);
+  }, []);
+
   if (!workflow) {
     return (
-      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-        <p className="text-gray-500">Workflow not found.</p>
+      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-6">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Workflow not found.</p>
+          <button
+            onClick={() => navigate('/workflows')}
+            className="text-sm text-[#2d6a4f] font-medium hover:underline"
+          >
+            ← Back to Library
+          </button>
+        </div>
       </div>
     );
   }
 
   const isActive = ['running', 'synchronizing'].includes(workflow.status);
+  const isIdle = workflow.status === 'idle';
+  const isError = workflow.status === 'error';
   const isEditable = workflow.status === 'disabled' || isNew;
   const disabled = !isEditable;
 
@@ -128,7 +141,7 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
     if (isActive) {
       setDisableDialog(true);
     } else if (workflow.status === 'disabled') {
-      // Enable: validate first
+      // Re-enable: validate first
       const v = validateWorkflow(workflow);
       if (v.errors.length > 0 || v.stepErrors.some(e => e.length > 0)) {
         setSaveAttempted(true);
@@ -136,16 +149,19 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
       }
       const updated = { ...workflow, status: 'idle', enabled: true };
       onWorkflowsChange(workflows.map(w => w.id === updated.id ? updated : w));
-      setWorkflow(updated);
-    } else if (isNew) {
-      // noop
+      updateWorkflow(updated);
+    } else if (isIdle || isError) {
+      // Disable idle/error workflows directly (no confirmation needed)
+      const updated = { ...workflow, status: 'disabled', enabled: false };
+      onWorkflowsChange(workflows.map(w => w.id === updated.id ? updated : w));
+      updateWorkflow(updated);
     }
   };
 
   const confirmDisable = () => {
     const updated = { ...workflow, status: 'disabled', enabled: false };
     onWorkflowsChange(workflows.map(w => w.id === updated.id ? updated : w));
-    setWorkflow(updated);
+    updateWorkflow(updated);
     setDisableDialog(false);
   };
 
@@ -155,9 +171,7 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
     if (v.errors.length > 0 || v.stepErrors.some(e => e.length > 0)) return;
     if (hasConflicts) return;
 
-    const toSave = isNew
-      ? { ...workflow, status: 'disabled' }
-      : workflow;
+    const toSave = isNew ? { ...workflow, status: 'disabled' } : workflow;
 
     if (isNew) {
       onWorkflowsChange([...workflows, toSave]);
@@ -165,216 +179,214 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
       onWorkflowsChange(workflows.map(w => w.id === toSave.id ? toSave : w));
     }
     setSaved(true);
-    setTimeout(() => {
-      navigate('/workflows');
-    }, 600);
+    setTimeout(() => navigate('/workflows'), 600);
   };
 
   const addStep = () => {
     const newStep = workflow.trigger.type === 'sensor'
       ? createNewSensorStep(workflow.trigger.sensors)
       : createNewScheduleStep();
-    setWorkflow({ ...workflow, steps: [...workflow.steps, newStep] });
+    updateWorkflow({ ...workflow, steps: [...workflow.steps, newStep] });
   };
 
   const updateStep = (idx, updated) => {
     const steps = workflow.steps.map((s, i) => i === idx ? updated : s);
-    setWorkflow({ ...workflow, steps });
+    updateWorkflow({ ...workflow, steps });
   };
 
   const removeStep = (idx) => {
     if (!isEditable) return;
-    const steps = workflow.steps.filter((_, i) => i !== idx);
-    setWorkflow({ ...workflow, steps });
+    updateWorkflow({ ...workflow, steps: workflow.steps.filter((_, i) => i !== idx) });
   };
 
   const isSensor = workflow.trigger.type === 'sensor';
-
   const stepCountLabel = `${workflow.steps.length} ${workflow.steps.length === 1 ? 'step' : 'steps'}`;
-  const modeLabel = isSensor ? 'Sensor mode' : 'Schedule mode';
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-100 px-5 py-3 sticky top-0 z-10">
-        <div className="flex items-center gap-4 max-w-5xl mx-auto">
-          <button
-            onClick={() => navigate('/workflows')}
-            className="text-sm text-[#2d6a4f] font-medium hover:underline shrink-0 flex items-center gap-1"
-          >
-            ‹ Back to Workflow Library
-          </button>
-
-          <input
-            type="text"
-            value={workflow.name}
-            onChange={e => setWorkflow({ ...workflow, name: e.target.value })}
-            disabled={disabled}
-            placeholder="Workflow name..."
-            className={cn(
-              'border rounded-xl px-3 py-1.5 text-base font-medium bg-white flex-1 min-w-0',
-              saveAttempted && errors.includes('name')
-                ? 'border-red-400 ring-1 ring-red-300'
-                : 'border-gray-200 focus:border-[#2d6a4f] focus:outline-none'
-            )}
-          />
-
-          <div className="flex items-center gap-2 shrink-0 text-sm text-gray-500">
-            <StatusBadge status={workflow.status === 'new' ? 'new' : workflow.status} />
-            <span className="text-gray-300">·</span>
-            <span>{stepCountLabel}</span>
-            <span className="text-gray-300">·</span>
-            <span>{modeLabel}</span>
-            <span className="text-gray-300">·</span>
-            <span>Priority</span>
+      {/* Sticky top bar */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-5xl mx-auto">
+          {/* Row 1: back + name */}
+          <div className="flex items-center gap-3 mb-2">
+            <button
+              onClick={() => navigate('/workflows')}
+              className="text-sm text-[#2d6a4f] font-medium hover:underline shrink-0"
+            >
+              ‹ Library
+            </button>
             <input
-              type="number"
-              min="1"
-              max="10"
-              value={workflow.priority}
-              onChange={e => setWorkflow({ ...workflow, priority: Number(e.target.value) })}
-              disabled={!isEditable}
-              className="border border-gray-200 rounded-lg px-2 py-1 text-sm w-14 text-center"
+              type="text"
+              value={workflow.name}
+              onChange={e => updateWorkflow({ ...workflow, name: e.target.value })}
+              disabled={disabled}
+              placeholder="Workflow name..."
+              className={cn(
+                'border rounded-xl px-3 py-1.5 text-sm font-semibold bg-white flex-1 min-w-0',
+                saveAttempted && errors.includes('name')
+                  ? 'border-red-400 ring-1 ring-red-300'
+                  : 'border-gray-200 focus:border-[#2d6a4f] focus:outline-none'
+              )}
             />
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm text-gray-500">{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
-            <Toggle
-              checked={workflow.enabled}
-              onChange={handleToggle}
-            />
+          {/* Row 2: meta + toggle */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+              <StatusBadge status={workflow.status === 'new' ? 'idle' : workflow.status} />
+              <span className="text-gray-300">·</span>
+              <span>{isSensor ? 'Sensor' : 'Schedule'}</span>
+              <span className="text-gray-300">·</span>
+              <span>{stepCountLabel}</span>
+              <span className="text-gray-300">·</span>
+              <span>Priority</span>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={workflow.priority}
+                onChange={e => updateWorkflow({ ...workflow, priority: Number(e.target.value) })}
+                disabled={!isEditable}
+                className="border border-gray-200 rounded-lg px-2 py-0.5 text-xs w-12 text-center"
+              />
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-gray-500">{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
+              <Toggle checked={workflow.enabled} onChange={handleToggle} />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="px-5 py-5 max-w-5xl mx-auto">
-        {/* Error banner for error status */}
-        {workflow.status === 'error' && (
-          <AlertBanner message="Workflow stopped due to a Step error" variant="error" />
+      <div className="px-4 py-4 max-w-5xl mx-auto">
+        {/* Error status banner */}
+        {isError && (
+          <AlertBanner message="Workflow stopped due to a Step error. Disable and fix the configuration to restart." variant="error" />
         )}
 
         {/* Validation errors */}
         {hasErrors && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
             Please fill in all required fields before saving.
           </div>
         )}
 
         {/* Trigger */}
-        <TriggerSection
-          workflow={workflow}
-          onChange={setWorkflow}
-          disabled={disabled}
-        />
+        <TriggerSection workflow={workflow} onChange={updateWorkflow} disabled={disabled} />
 
-        {/* Active Hours (sensor only) */}
-        <ActiveHoursSection
-          workflow={workflow}
-          onChange={setWorkflow}
-          disabled={disabled}
-        />
+        {/* Active Hours */}
+        <ActiveHoursSection workflow={workflow} onChange={updateWorkflow} disabled={disabled} />
 
         {/* Notifications */}
-        <NotificationsSection
-          workflow={workflow}
-          onChange={setWorkflow}
-          disabled={disabled}
-        />
+        <NotificationsSection workflow={workflow} onChange={updateWorkflow} disabled={disabled} />
 
         {/* Steps */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-3">
           <div className="flex items-center justify-between px-5 py-4">
-            <h3 className="text-sm font-semibold text-gray-800">Steps</h3>
+            <h3 className="text-sm font-semibold text-gray-800">
+              Steps
+              <span className="ml-2 text-xs font-normal text-gray-400">
+                {isSensor
+                  ? 'Sensor-triggered actions on each device'
+                  : 'Sequential commands after schedule fires'}
+              </span>
+            </h3>
             {isEditable && (
-              <button
-                onClick={addStep}
-                className="text-sm text-[#2d6a4f] font-medium hover:underline"
-              >
+              <button onClick={addStep} className="text-sm text-[#2d6a4f] font-medium hover:underline">
                 + Add Step
               </button>
             )}
           </div>
 
-          <div className="px-5 pb-5 border-t border-gray-50">
-            {/* Step column headers */}
-            <div className="flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-widest text-gray-400 font-semibold">
-              <span className="w-10 shrink-0"></span>
-              <span className="min-w-[140px]">DEVICE</span>
+          <div className="px-4 pb-5 border-t border-gray-50">
+            {/* Column headers — desktop only */}
+            <div className="hidden md:flex items-center gap-3 px-2 py-2 text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+              <span className="w-8 shrink-0">#</span>
+              <span className="w-36 shrink-0">DEVICE</span>
               {isSensor ? (
                 <>
-                  <span className="flex-1">SENSOR</span>
-                  <span className="min-w-[120px]">ACTION TYPE</span>
-                  <span className="shrink-0">PARAMS</span>
+                  <span className="w-24 shrink-0">SENSOR</span>
+                  <span className="w-16 shrink-0 text-center">FROM</span>
+                  <span className="w-16 shrink-0 text-center">CURRENT</span>
+                  <span className="w-16 shrink-0 text-center">UNTIL</span>
+                  <span className="flex-1">ACTION TYPE</span>
+                  <span className="w-32 shrink-0">PARAMS</span>
                 </>
               ) : (
                 <>
-                  <span>ACTION</span>
+                  <span className="w-20 shrink-0">ACTION</span>
                   <span className="flex-1">PARAMS</span>
                 </>
               )}
-              <span className="shrink-0 min-w-[60px] text-right">STATUS</span>
-              {isEditable && <span className="w-4"></span>}
+              <span className="w-16 shrink-0 text-right">STATUS</span>
+              {isEditable && <span className="w-5 shrink-0" />}
             </div>
 
-            {/* Step hint */}
+            {/* Empty state */}
             {workflow.steps.length === 0 && (
-              <div className="text-sm text-gray-400 px-3 py-4 border border-dashed border-gray-200 rounded-xl text-center">
+              <div className="text-sm text-gray-400 px-3 py-6 border border-dashed border-gray-200 rounded-xl text-center mt-2">
                 {isSensor
-                  ? 'After the trigger fires, sensor value is checked at each step. Steps can run in parallel — next step activates when the previous one has started and its sensor condition is met.'
-                  : 'After the trigger fires, steps execute in order. Command is sent to the device and the next step activates once the command is accepted.'}
+                  ? 'Add steps below. Each step defines which device acts, when sensor values cross certain thresholds.'
+                  : 'Add steps below. Steps execute in sequence after the schedule trigger fires.'}
               </div>
             )}
 
             {saveAttempted && errors.includes('steps') && (
-              <p className="text-xs text-red-500 mb-2 px-3">At least one step is required.</p>
+              <p className="text-xs text-red-500 mb-2 px-2 mt-2">At least one step is required.</p>
             )}
 
-            {workflow.steps.map((step, idx) =>
-              isSensor ? (
-                <SensorStepRow
-                  key={step.id}
-                  step={step}
-                  index={idx}
-                  triggerLogic={workflow.trigger.logic}
-                  onChange={updated => updateStep(idx, updated)}
-                  onRemove={() => removeStep(idx)}
-                  disabled={disabled}
-                  saveAttempted={saveAttempted}
-                  stepConflicts={stepConflicts}
-                />
-              ) : (
-                <ScheduleStepRow
-                  key={step.id}
-                  step={step}
-                  index={idx}
-                  onChange={updated => updateStep(idx, updated)}
-                  onRemove={() => removeStep(idx)}
-                  disabled={disabled}
-                  saveAttempted={saveAttempted}
-                  stepConflicts={stepConflicts}
-                />
-              )
-            )}
+            <div className="mt-2 space-y-2">
+              {workflow.steps.map((step, idx) =>
+                isSensor ? (
+                  <SensorStepRow
+                    key={step.id}
+                    step={step}
+                    index={idx}
+                    triggerLogic={workflow.trigger.logic}
+                    onChange={updated => updateStep(idx, updated)}
+                    onRemove={() => removeStep(idx)}
+                    disabled={disabled}
+                    saveAttempted={saveAttempted}
+                    stepConflicts={stepConflicts}
+                  />
+                ) : (
+                  <ScheduleStepRow
+                    key={step.id}
+                    step={step}
+                    index={idx}
+                    onChange={updated => updateStep(idx, updated)}
+                    onRemove={() => removeStep(idx)}
+                    disabled={disabled}
+                    saveAttempted={saveAttempted}
+                    stepConflicts={stepConflicts}
+                  />
+                )
+              )}
+            </div>
           </div>
         </div>
 
         {/* Save button */}
         {isEditable && (
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end mt-4 pb-4">
             <button
               onClick={handleSave}
               disabled={saved}
               className={cn(
-                'flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold shadow-sm transition-colors',
+                'flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold shadow-sm transition-all',
                 saved
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-900 text-white hover:bg-gray-800'
+                  ? 'bg-green-600 text-white scale-95'
+                  : hasConflicts
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-gray-900 text-white hover:bg-gray-800'
               )}
             >
-              {saved ? '✓ Saved' : (
+              {saved ? (
+                '✓ Saved!'
+              ) : hasConflicts ? (
+                '⚠ Conflicts — resolve first'
+              ) : (
                 <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                     <polyline points="17 21 17 13 7 13 7 21" />
                     <polyline points="7 3 7 8 15 8" />
@@ -387,11 +399,11 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
         )}
       </div>
 
-      {/* Disable dialog */}
+      {/* Disable running dialog */}
       <ConfirmDialog
         open={disableDialog}
         title="Disable Running Workflow?"
-        description={`${workflow.name} is currently running. All devices turned on by this Workflow will be switched off immediately.`}
+        description={`"${workflow.name}" is currently running. All devices turned on by this Workflow will be switched off immediately.`}
         confirmLabel="Disable"
         confirmVariant="danger"
         onConfirm={confirmDisable}
