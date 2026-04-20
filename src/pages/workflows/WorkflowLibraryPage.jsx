@@ -85,7 +85,7 @@ function WorkflowRow({ wf, onToggle, onDelete, onDeleteBlocked }) {
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className={cn('font-semibold text-sm truncate', isDisabled ? 'text-gray-400' : 'text-gray-900')}>
             {wf.name}
           </span>
@@ -94,8 +94,12 @@ function WorkflowRow({ wf, onToggle, onDelete, onDeleteBlocked }) {
             <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide">Default</span>
           )}
         </div>
-        <p className={cn('text-xs mt-0.5 truncate', isDisabled ? 'text-gray-300' : 'text-gray-400')}>
-          {getTriggerSummary(wf)} · {wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}
+        <div className={cn('mb-0.5', isDisabled && 'opacity-40')}>
+          <TriggerSummary workflow={wf} />
+        </div>
+        <p className={cn('text-xs flex items-center gap-1', isDisabled ? 'text-gray-300' : 'text-gray-400')}>
+          <span>≡</span>
+          {wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}
         </p>
       </div>
 
