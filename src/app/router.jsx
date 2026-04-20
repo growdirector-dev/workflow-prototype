@@ -7,7 +7,6 @@ const normalizeBasename = (basename) => {
   if (!basename || basename === "/") {
     return "/";
   }
-
   return basename.endsWith("/") ? basename.slice(0, -1) : basename;
 };
 
@@ -21,7 +20,7 @@ const routes = [
         loader: () => redirect("workflows"),
       },
       {
-        path: "workflows",
+        path: "workflows/*",
         element: <WorkflowsPage />,
       },
     ],

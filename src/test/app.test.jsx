@@ -10,11 +10,11 @@ afterEach(() => {
 });
 
 describe("App", () => {
-  it("redirects to workflows and renders the placeholder page", async () => {
+  it("redirects to workflows and renders the Workflow Library page", async () => {
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: /workflows/i })).toBeInTheDocument();
-    expect(screen.getByText(/workflow list and editor content will be migrated next/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /workflow library/i })).toBeInTheDocument();
+    expect(screen.getByText(/browse active automations/i)).toBeInTheDocument();
   });
 
   it("resolves the workflows route under the GitHub Pages basename", async () => {
@@ -24,7 +24,7 @@ describe("App", () => {
 
     render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
 
-    expect(await screen.findByRole("heading", { name: /workflows/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /workflow library/i })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/workflow-prototype/workflows");
   });
 });
