@@ -3,20 +3,55 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils.js';
 import { Toggle, StatusBadge, PriorityBadge, ConfirmDialog } from '@/widgets/ui.jsx';
 
-function getTriggerSummary(workflow) {
-  if (!workflow.trigger) return '—';
+function TriggerPill({ label }) {
+  return (
+    <span className="inline-flex items-center bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 text-xs font-medium">
+      {label}
+    </span>
+  );
+}
+
+function AndOrTag({ logic }) {
+  return (
+    <span className={cn(
+      'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold',
+      logic === 'AND' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+    )}>
+      {logic}
+    </span>
+  );
+}
+
+function TriggerSummary({ workflow }) {
+  if (!workflow.trigger) return <span className="text-gray-300 text-xs">—</span>;
+
   if (workflow.trigger.type === 'sensor') {
     const sensors = workflow.trigger.sensors || [];
-    if (sensors.length === 0) return 'No sensors';
-    const sensorNames = { s1: 'Temp', s2: 'Humidity', s3: 'CO₂', s4: 'Light', s5: 'Soil', s6: 'pH', s7: 'EC' };
-    const parts = sensors.map(s => {
-      const op = s.operator === 'Higher than' ? '>' : '<';
-      return `${sensorNames[s.sensorId] || s.sensorId} ${op} ${s.value}${s.unit}`;
-    });
-    return parts.join(` ${workflow.trigger.logic || ''} `);
+    const sensorNames = { s1: 'Temperature', s2: 'Humidity', s3: 'CO₂', s4: 'Light', s5: 'Soil', s6: 'pH', s7: 'EC' };
+    if (sensors.length === 0) return <span className="text-xs text-gray-400">No sensors</span>;
+
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {sensors.map((s, idx) => (
+          <span key={idx} className="flex items-center gap-1.5">
+            {idx > 0 && workflow.trigger.logic && (
+              <AndOrTag logic={workflow.trigger.logic} />
+            )}
+            <TriggerPill label={`${sensorNames[s.sensorId] || s.sensorId} ${s.operator === 'Higher than' ? '>' : '<'} ${s.value}${s.unit}`} />
+          </span>
+        ))}
+      </div>
+    );
   }
+
   const times = workflow.trigger.times || [];
-  return times.length > 0 ? times.join(' · ') : 'No times set';
+  if (times.length === 0) return <span className="text-xs text-gray-400">No times set</span>;
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {times.map(t => <TriggerPill key={t} label={t} />)}
+    </div>
+  );
 }
 
 function WorkflowRow({ wf, onToggle, onDelete, onDeleteBlocked }) {

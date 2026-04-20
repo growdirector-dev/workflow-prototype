@@ -22,7 +22,7 @@ export function Toggle({ checked, onChange, disabled = false, size = 'md' }) {
           'inline-block rounded-full bg-white shadow-sm transition-transform duration-200',
           size === 'sm' ? 'h-3.5 w-3.5' : 'h-5 w-5',
           size === 'sm'
-            ? checked ? 'translate-x-4.5' : 'translate-x-0.5'
+            ? checked ? 'translate-x-[18px]' : 'translate-x-0.5'
             : checked ? 'translate-x-6' : 'translate-x-1'
         )}
       />
@@ -52,7 +52,16 @@ const STATUS_DOTS = {
 };
 
 export function StatusBadge({ status }) {
-  const label = status.charAt(0).toUpperCase() + status.slice(1);
+  const labels = {
+    running: 'Running',
+    synchronizing: 'Syncing',
+    idle: 'Idle',
+    completed: 'Done',
+    error: 'Error',
+    disabled: 'Disabled',
+    new: 'New',
+  };
+  const label = labels[status] || (status.charAt(0).toUpperCase() + status.slice(1));
   const dot = STATUS_DOTS[status];
   return (
     <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', STATUS_STYLES[status] || 'bg-gray-100 text-gray-600')}>
