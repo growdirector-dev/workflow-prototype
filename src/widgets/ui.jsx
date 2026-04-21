@@ -32,23 +32,23 @@ export function Toggle({ checked, onChange, disabled = false, size = 'md' }) {
 
 // Status badge
 const STATUS_STYLES = {
-  running: 'bg-blue-100 text-blue-700',
+  running:       'bg-blue-100 text-blue-700',
   synchronizing: 'bg-amber-100 text-amber-700',
-  idle: 'bg-gray-100 text-gray-600',
-  completed: 'bg-green-100 text-green-700',
-  error: 'bg-red-100 text-red-600',
-  disabled: 'bg-gray-100 text-gray-400',
-  new: 'bg-gray-100 text-gray-500',
+  idle:          'bg-gray-100 text-gray-600',
+  completed:     'bg-green-100 text-green-700',
+  error:         'bg-red-100 text-red-600',
+  disabled:      'bg-gray-100 text-gray-400',
+  new:           'bg-gray-100 text-gray-500',
 };
 
 const STATUS_DOTS = {
-  running: 'bg-blue-500 animate-pulse',
-  synchronizing: 'bg-amber-500',
-  idle: null,
-  completed: null,
-  error: null,
-  disabled: null,
-  new: null,
+  running:       'bg-blue-500 animate-pulse',
+  synchronizing: 'bg-amber-500 animate-pulse',
+  idle:          null,
+  completed:     null,
+  error:         null,
+  disabled:      null,
+  new:           null,
 };
 
 export function StatusBadge({ status }) {

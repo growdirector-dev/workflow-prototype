@@ -119,7 +119,10 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
                                 'border-gray-100';
 
   return (
-    <div className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasDeviceError && 'border-red-400')}>
+    <div
+      data-error={hasDeviceError ? 'true' : 'false'}
+      className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasDeviceError && 'border-red-400')}
+    >
       {/* Main row */}
       <div className="flex items-start gap-3 p-3">
         {/* Step number */}
@@ -236,7 +239,10 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
                                 'border-gray-100';
 
   return (
-    <div className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, (hasDeviceError || hasDurationError) && 'border-red-300')}>
+    <div
+      data-error={(hasDeviceError || hasDurationError) ? 'true' : 'false'}
+      className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, (hasDeviceError || hasDurationError) && 'border-red-300')}
+    >
       <div className="flex items-start gap-3 p-3">
         {/* Step number */}
         <div className="shrink-0 w-5 pt-2 text-center">

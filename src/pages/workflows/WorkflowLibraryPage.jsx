@@ -139,7 +139,7 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
   const [deleteDialog, setDeleteDialog] = useState(null);
   const [deleteBlockedName, setDeleteBlockedName] = useState(null);
 
-  const activeStatuses = new Set(['running', 'synchronizing', 'idle', 'error']);
+  const activeStatuses = new Set(['running', 'synchronizing', 'idle', 'error', 'completed']);
   const activeWorkflows = workflows.filter(w => activeStatuses.has(w.status)).sort((a, b) => a.priority - b.priority);
   const inactiveWorkflows = workflows.filter(w => w.status === 'disabled').sort((a, b) => a.priority - b.priority);
 
@@ -155,7 +155,7 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
     } else if (wf.status === 'disabled') {
       onWorkflowsChange(workflows.map(w => w.id === wf.id ? { ...w, status: 'idle', enabled: true } : w));
     } else {
-      // idle / error — disable directly
+      // idle / error / completed — disable directly
       onWorkflowsChange(workflows.map(w => w.id === wf.id ? { ...w, status: 'disabled', enabled: false } : w));
     }
   };

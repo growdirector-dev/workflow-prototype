@@ -53,15 +53,37 @@ function validateWorkflow(wf) {
   return { errors, stepErrors };
 }
 
-function detectConflicts(wf) {
+function detectConflicts(wf, allWorkflows) {
   const conflicts = {};
+
+  // Collect all device IDs used in THIS workflow's steps (for future use)
+
   (wf.steps || []).forEach(step => {
+    if (!step.deviceId) return;
     const device = DEVICES.find(d => d.id === step.deviceId);
     if (!device) return;
+
+    // Rule conflict: device used in a Rule → time overlap
     if (device.status === 'rule') {
-      conflicts[step.deviceId] = `Device shared with Rule (${device.ruleName}) with the same time — change time before saving`;
+      conflicts[step.deviceId] = `Device shared with Rule "${device.ruleName}" with the same time — change time before saving`;
+      return;
+    }
+
+    // Priority conflict: another workflow shares this device AND has same priority
+    const conflictingWf = allWorkflows.find(other => {
+      if (other.id === wf.id) return false;                     // skip self
+      if (other.status === 'disabled') return false;             // disabled don't conflict
+      if (other.priority !== wf.priority) return false;          // different priority = no conflict
+      const otherDevices = (other.steps || []).map(s => s.deviceId);
+      return otherDevices.includes(step.deviceId);
+    });
+
+    if (conflictingWf) {
+      conflicts[step.deviceId] =
+        `Device shared with Workflow "${conflictingWf.name}" with the same priority — change priority before saving`;
     }
   });
+
   return conflicts;
 }
 
@@ -104,10 +126,32 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
   const [saveAttempted, setSaveAttempted] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Keep local state in sync if parent updates (e.g. toggle from library)
+  // Sync sensorRows in all steps when trigger sensors change.
+  // Called by TriggerSection whenever the sensor list changes.
   const updateWorkflow = useCallback((updated) => {
-    setWorkflow(updated);
-  }, []);
+    const prevSensors = workflow.trigger?.sensors || [];
+    const nextSensors = updated.trigger?.sensors || [];
+    const sensorsChanged =
+      prevSensors.length !== nextSensors.length ||
+      prevSensors.some((s, i) => s.sensorId !== nextSensors[i]?.sensorId);
+
+    if (sensorsChanged && updated.trigger?.type === 'sensor' && updated.steps?.length > 0) {
+      // Rebuild sensorRows for every step to match new trigger sensors
+      const syncedSteps = updated.steps.map(step => ({
+        ...step,
+        sensorRows: nextSensors.map(s => {
+          // Preserve existing row data if sensor already existed in this step
+          const existing = (step.sensorRows || []).find(r => r.sensorId === s.sensorId);
+          return existing
+            ? existing
+            : { sensorId: s.sensorId, from: s.value, currentValue: null, until: '' };
+        }),
+      }));
+      setWorkflow({ ...updated, steps: syncedSteps });
+    } else {
+      setWorkflow(updated);
+    }
+  }, [workflow.trigger]);
 
   if (!workflow) {
     return (
@@ -126,7 +170,6 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
   }
 
   const isActive = ['running', 'synchronizing'].includes(workflow.status);
-  const isIdle = workflow.status === 'idle';
   const isError = workflow.status === 'error';
   const isEditable = workflow.status === 'disabled' || isNew;
   const disabled = !isEditable;
@@ -134,7 +177,7 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
   const { errors, stepErrors } = validateWorkflow(workflow);
   const hasErrors = saveAttempted && (errors.length > 0 || stepErrors.some(e => e.length > 0));
 
-  const stepConflicts = detectConflicts(workflow);
+  const stepConflicts = detectConflicts(workflow, workflows);
   const hasConflicts = Object.keys(stepConflicts).length > 0;
 
   const handleToggle = () => {
@@ -150,8 +193,8 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
       const updated = { ...workflow, status: 'idle', enabled: true };
       onWorkflowsChange(workflows.map(w => w.id === updated.id ? updated : w));
       updateWorkflow(updated);
-    } else if (isIdle || isError) {
-      // Disable idle/error workflows directly (no confirmation needed)
+    } else {
+      // idle / error / completed — disable directly (no confirmation needed)
       const updated = { ...workflow, status: 'disabled', enabled: false };
       onWorkflowsChange(workflows.map(w => w.id === updated.id ? updated : w));
       updateWorkflow(updated);
@@ -168,11 +211,18 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
   const handleSave = () => {
     setSaveAttempted(true);
     const v = validateWorkflow(workflow);
-    if (v.errors.length > 0 || v.stepErrors.some(e => e.length > 0)) return;
-    if (hasConflicts) return;
+    const hasValidationErrors = v.errors.length > 0 || v.stepErrors.some(e => e.length > 0);
+
+    if (hasValidationErrors || hasConflicts) {
+      // Scroll to first visible error after React re-renders
+      setTimeout(() => {
+        const el = document.querySelector('[data-error="true"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+      return;
+    }
 
     const toSave = isNew ? { ...workflow, status: 'disabled' } : workflow;
-
     if (isNew) {
       onWorkflowsChange([...workflows, toSave]);
     } else {
@@ -221,6 +271,7 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
               onChange={e => updateWorkflow({ ...workflow, name: e.target.value })}
               disabled={disabled}
               placeholder="Workflow name..."
+              data-error={saveAttempted && errors.includes('name') ? 'true' : 'false'}
               className={cn(
                 'border rounded-xl px-3 py-1.5 text-sm font-semibold bg-white flex-1 min-w-0',
                 saveAttempted && errors.includes('name')
@@ -259,13 +310,33 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
 
       <div className="px-4 py-4 max-w-5xl mx-auto">
         {/* Error status banner */}
-        {isError && (
-          <AlertBanner message="Workflow stopped due to a Step error. Disable and fix the configuration to restart." variant="error" />
-        )}
+        {isError && (() => {
+          const failedSteps = workflow.steps
+            .map((s, idx) => ({ ...s, num: idx + 1 }))
+            .filter(s => s.status === 'error');
+          const failedDesc = failedSteps.length > 0
+            ? failedSteps.map(s => {
+                const dev = DEVICES.find(d => d.id === s.deviceId);
+                return `Step ${s.num}${dev ? ` (${dev.name})` : ''}`;
+              }).join(', ')
+            : null;
+          return (
+            <AlertBanner
+              message={failedDesc
+                ? `Workflow stopped due to an error in ${failedDesc}. Disable the Workflow, fix the configuration, then re-enable.`
+                : 'Workflow stopped due to a Step error. Disable and fix the configuration to restart.'
+              }
+              variant="error"
+            />
+          );
+        })()}
 
         {/* Validation errors */}
         {hasErrors && (
-          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+          <div
+            data-error="true"
+            className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600"
+          >
             Please fill in all required fields before saving.
           </div>
         )}
@@ -334,7 +405,7 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
               <p className="text-xs text-red-500 mb-2 px-2 mt-2">At least one step is required.</p>
             )}
 
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-2 overflow-x-auto">
               {workflow.steps.map((step, idx) =>
                 isSensor ? (
                   <SensorStepRow
