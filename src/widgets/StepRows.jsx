@@ -1,28 +1,90 @@
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils.js';
 import { DEVICES, SENSORS } from '@/lib/mockData.js';
 import { StepStatusBadge, ConflictBanner } from '@/widgets/ui.jsx';
 
-// Device select — shared between sensor and schedule steps
+// Custom device picker — shows yellow label for Rule/Workflow devices per spec
 function DeviceSelect({ value, onChange, disabled, conflicts }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
   const conflict = conflicts?.[value];
+  const selected = DEVICES.find(d => d.id === value);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const deviceLabel = (d) => {
+    if (d.status === 'rule') return `${d.name} (Rule)`;
+    if (d.status === 'workflow') return `${d.name} (Workflow)`;
+    return d.name;
+  };
+
+  const triggerColor = () => {
+    if (!selected) return 'text-gray-400';
+    if (selected.status === 'rule' || selected.status === 'workflow') return 'text-amber-700';
+    return 'text-gray-800';
+  };
+
   return (
-    <div className="w-full">
-      <select
-        value={value || ''}
-        onChange={e => onChange(e.target.value)}
+    <div className="w-full relative" ref={ref}>
+      {/* Trigger button */}
+      <button
+        type="button"
         disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
         className={cn(
-          'border rounded-lg px-2 py-1.5 text-sm bg-white w-full',
-          conflict ? 'border-amber-300 text-amber-700' : 'border-gray-200'
+          'border rounded-lg px-2 py-1.5 text-sm bg-white w-full text-left flex items-center justify-between gap-1',
+          conflict ? 'border-amber-400' : 'border-gray-200',
+          disabled && 'opacity-60 cursor-default bg-gray-50'
         )}
       >
-        <option value="">Select device…</option>
-        {DEVICES.map(d => (
-          <option key={d.id} value={d.id}>
-            {d.name}{d.status === 'rule' ? ' (Rule)' : d.status === 'workflow' ? ' (Wf)' : ''}
-          </option>
-        ))}
-      </select>
+        <span className={cn('truncate', triggerColor())}>
+          {selected ? deviceLabel(selected) : 'Select device…'}
+        </span>
+        <span className="text-gray-300 shrink-0">▾</span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-30 top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+          <button
+            type="button"
+            onClick={() => { onChange(''); setOpen(false); }}
+            className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:bg-gray-50"
+          >
+            Select device…
+          </button>
+          {DEVICES.map(d => {
+            const isOccupied = d.status === 'rule' || d.status === 'workflow';
+            return (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => { onChange(d.id); setOpen(false); }}
+                className={cn(
+                  'w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors',
+                  d.id === value && 'bg-green-50',
+                  isOccupied ? 'text-amber-700' : 'text-gray-800'
+                )}
+              >
+                <span className="truncate">{d.name}</span>
+                {d.status === 'rule' && (
+                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded shrink-0">(Rule)</span>
+                )}
+                {d.status === 'workflow' && (
+                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded shrink-0">(Workflow)</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {conflict && <ConflictBanner message={conflict} />}
     </div>
   );
@@ -233,6 +295,7 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
 
   const statusColor =
     step.status === 'running' ? 'border-blue-400 bg-blue-50/30' :
+    step.status === 'waiting' ? 'border-amber-300 bg-amber-50/20' :
     step.status === 'done'    ? 'border-green-300' :
     step.status === 'error'   ? 'border-red-300 bg-red-50/20' :
                                 'border-gray-100';

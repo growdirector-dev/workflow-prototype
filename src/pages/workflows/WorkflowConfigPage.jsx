@@ -94,11 +94,15 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
 
   const [workflow, setWorkflow] = useState(() => {
     if (isNew) {
-      const maxPriority = Math.max(0, ...workflows.map(w => w.priority));
+      // Find the lowest unused priority number (1..10)
+    const usedPriorities = new Set(workflows.map(w => w.priority));
+    let nextPriority = 1;
+    while (usedPriorities.has(nextPriority) && nextPriority <= 10) nextPriority++;
+    if (nextPriority > 10) nextPriority = 10; // fallback if all slots taken
       return {
         id: 'new_' + Date.now(),
         name: '',
-        priority: maxPriority + 1,
+        priority: nextPriority,
         mode: 'sensor',
         status: 'new',
         enabled: false,
@@ -301,11 +305,12 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
             <span>Priority</span>
             <input
               type="number"
-              min="1" max="20"
+              min="1" max="10"
               value={workflow.priority}
               onChange={e => updateWorkflow({ ...workflow, priority: Number(e.target.value) })}
               disabled={!isEditable}
-              className="border border-gray-200 rounded-lg px-2 py-0.5 text-xs w-12 text-center disabled:bg-gray-50 disabled:text-gray-400"
+              title={!isEditable ? 'Disable the Workflow to change priority' : 'Priority 1–10 (lower = higher priority)'}
+              className="border border-gray-200 rounded-lg px-2 py-0.5 text-xs w-12 text-center disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -330,13 +335,14 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
           const failedDesc = failedSteps.length > 0
             ? failedSteps.map(s => {
                 const dev = DEVICES.find(d => d.id === s.deviceId);
-                return `Step ${s.num}${dev ? ` (${dev.name})` : ''}`;
-              }).join(', ')
+                const base = `Step ${s.num}${dev ? ` (${dev.name})` : ''}`;
+                return s.errorReason ? `${base}: ${s.errorReason}` : base;
+              }).join('; ')
             : null;
           return (
             <AlertBanner
               message={failedDesc
-                ? `Workflow stopped due to an error in ${failedDesc}. Disable the Workflow, fix the configuration, then re-enable.`
+                ? `Workflow stopped due to an error — ${failedDesc}. Disable the Workflow, fix the configuration, then re-enable.`
                 : 'Workflow stopped due to a Step error. Disable and fix the configuration to restart.'
               }
               variant="error"

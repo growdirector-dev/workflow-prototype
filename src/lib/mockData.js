@@ -297,6 +297,7 @@ export const initialWorkflows = [
         action: 'On',
         params: { duration: 5, unit: 'min' },
         status: 'error',
+        errorReason: 'ModBus command not accepted within 30 sec',
       },
     ],
   },
