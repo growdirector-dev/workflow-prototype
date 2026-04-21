@@ -394,13 +394,19 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
               <span className="w-44 shrink-0">DEVICE</span>
               {isSensor ? (
                 <>
-                  <span className="flex-1 min-w-[160px]">SENSOR · FROM · NOW · UNTIL</span>
+                  {/* Sensor column: name(80px) + FROM(56px) + NOW(56px) + UNTIL(56px) + unit(~40px) */}
+                  <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+                    <span className="w-20 shrink-0">SENSOR</span>
+                    <span className="w-14 text-center">FROM</span>
+                    <span className="w-14 text-center">NOW</span>
+                    <span className="w-14 text-center">UNTIL</span>
+                  </div>
                   <span className="w-32 shrink-0">ACTION TYPE</span>
                   <span className="w-44 shrink-0">PARAMS</span>
                 </>
               ) : (
                 <>
-                  <span className="w-24 shrink-0">ACTION</span>
+                  <span className="w-20 shrink-0">ACTION</span>
                   <span className="flex-1">PARAMS</span>
                 </>
               )}
@@ -421,13 +427,14 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
               <p className="text-xs text-red-500 mb-2 px-2 mt-2">At least one step is required.</p>
             )}
 
-            <div className="mt-2 space-y-2 overflow-x-auto">
+            <div className="mt-2 space-y-2">
               {workflow.steps.map((step, idx) =>
                 isSensor ? (
                   <SensorStepRow
                     key={step.id}
                     step={step}
                     index={idx}
+                    triggerSensors={workflow.trigger.sensors}
                     triggerLogic={workflow.trigger.logic}
                     onChange={updated => updateStep(idx, updated)}
                     onRemove={() => removeStep(idx)}

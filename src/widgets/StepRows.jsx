@@ -4,16 +4,37 @@ import { DEVICES, SENSORS } from '@/lib/mockData.js';
 import { StepStatusBadge, ConflictBanner } from '@/widgets/ui.jsx';
 
 // Custom device picker — shows yellow label for Rule/Workflow devices per spec
+// Uses fixed positioning for dropdown so it's never clipped by overflow containers
 function DeviceSelect({ value, onChange, disabled, conflicts }) {
   const [open, setOpen] = useState(false);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+  const btnRef = useRef(null);
   const ref = useRef(null);
   const conflict = conflicts?.[value];
   const selected = DEVICES.find(d => d.id === value);
 
+  // Position the fixed dropdown below the trigger button
+  const openDropdown = () => {
+    if (disabled) return;
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDropPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: Math.max(rect.width, 220),
+      });
+    }
+    setOpen(true);
+  };
+
   // Close on outside click
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (!ref.current?.contains(e.target) && !btnRef.current?.contains(e.target)) {
+        setOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
@@ -24,34 +45,39 @@ function DeviceSelect({ value, onChange, disabled, conflicts }) {
     return d.name;
   };
 
-  const triggerColor = () => {
+  const triggerTextColor = () => {
     if (!selected) return 'text-gray-400';
     if (selected.status === 'rule' || selected.status === 'workflow') return 'text-amber-700';
     return 'text-gray-800';
   };
 
   return (
-    <div className="w-full relative" ref={ref}>
+    <div className="w-full">
       {/* Trigger button */}
       <button
+        ref={btnRef}
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setOpen(o => !o)}
+        onClick={openDropdown}
         className={cn(
           'border rounded-lg px-2 py-1.5 text-sm bg-white w-full text-left flex items-center justify-between gap-1',
           conflict ? 'border-amber-400' : 'border-gray-200',
           disabled && 'opacity-60 cursor-default bg-gray-50'
         )}
       >
-        <span className={cn('truncate', triggerColor())}>
+        <span className={cn('truncate', triggerTextColor())}>
           {selected ? deviceLabel(selected) : 'Select device…'}
         </span>
-        <span className="text-gray-300 shrink-0">▾</span>
+        <span className="text-gray-300 shrink-0 text-xs">▾</span>
       </button>
 
-      {/* Dropdown */}
+      {/* Fixed dropdown — never clipped by overflow containers */}
       {open && (
-        <div className="absolute z-30 top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+        <div
+          ref={ref}
+          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+          className="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+        >
           <button
             type="button"
             onClick={() => { onChange(''); setOpen(false); }}
@@ -158,7 +184,7 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled }
   );
 }
 
-export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, disabled, saveAttempted, stepConflicts }) {
+export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onChange, onRemove, disabled, saveAttempted, stepConflicts }) {
   const sensorRows = step.sensorRows || [];
 
   const updateParam = (key, val) => onChange({ ...step, params: { ...step.params, [key]: val } });
@@ -169,6 +195,16 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
 
   const removeSensorRow = (rIdx) => {
     onChange({ ...step, sensorRows: sensorRows.filter((_, i) => i !== rIdx) });
+  };
+
+  // Sensors that exist in trigger but are missing from this step's rows
+  const missingSensors = (triggerSensors || []).filter(
+    ts => !sensorRows.some(r => r.sensorId === ts.sensorId)
+  );
+
+  const restoreSensor = (ts) => {
+    const newRow = { sensorId: ts.sensorId, from: ts.value, currentValue: null, until: '' };
+    onChange({ ...step, sensorRows: [...sensorRows, newRow] });
   };
 
   const hasDeviceError = saveAttempted && !step.deviceId;
@@ -206,7 +242,7 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
         {/* Sensor rows with FROM/CURRENT/UNTIL */}
         <div className="flex-1 min-w-[160px] space-y-1">
           {sensorRows.length === 0 && (
-            <span className="text-xs text-gray-400 italic">No sensors — add from trigger</span>
+            <span className="text-xs text-gray-400 italic">No sensors</span>
           )}
           {sensorRows.map((row, rIdx) => (
             <SensorDataRow
@@ -219,6 +255,21 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
               disabled={disabled}
             />
           ))}
+          {/* Restore sensors that were removed */}
+          {!disabled && missingSensors.map(ts => {
+            const sInfo = SENSORS.find(s => s.id === ts.sensorId);
+            return (
+              <button
+                key={ts.sensorId}
+                type="button"
+                onClick={() => restoreSensor(ts)}
+                className="text-xs text-[#2d6a4f] font-medium hover:underline mt-0.5 flex items-center gap-1"
+              >
+                <span>+</span>
+                <span>{sInfo?.name || ts.sensorId}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Action type */}
