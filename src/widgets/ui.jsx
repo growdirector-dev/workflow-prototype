@@ -81,7 +81,14 @@ const STEP_STATUS_STYLES = {
 };
 
 export function StepStatusBadge({ status }) {
-  const label = status.charAt(0).toUpperCase() + status.slice(1);
+  const labels = {
+    pending: 'Pending',
+    running: 'Running',
+    waiting: 'Waiting',
+    done: 'Done',
+    error: 'Error',
+  };
+  const label = labels[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : '—');
   return (
     <span className={cn('text-sm', STEP_STATUS_STYLES[status] || 'text-gray-400')}>
       {label}

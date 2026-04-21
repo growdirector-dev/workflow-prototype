@@ -113,9 +113,9 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
 
   const statusColor =
     step.status === 'running' ? 'border-blue-400 bg-blue-50/30' :
+    step.status === 'waiting' ? 'border-amber-300 bg-amber-50/20' :
     step.status === 'done'    ? 'border-green-300' :
     step.status === 'error'   ? 'border-red-300 bg-red-50/20' :
-    step.status === 'waiting' ? 'border-amber-300 bg-amber-50/20' :
                                 'border-gray-100';
 
   return (
@@ -131,7 +131,7 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
         </div>
 
         {/* Device */}
-        <div className="w-36 shrink-0">
+        <div className="w-44 shrink-0">
           <DeviceSelect
             value={step.deviceId}
             onChange={v => onChange({ ...step, deviceId: v })}
@@ -142,7 +142,7 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
         </div>
 
         {/* Sensor rows with FROM/CURRENT/UNTIL */}
-        <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex-1 min-w-[160px] space-y-1">
           {sensorRows.length === 0 && (
             <span className="text-xs text-gray-400 italic">No sensors — add from trigger</span>
           )}
@@ -160,8 +160,7 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
         </div>
 
         {/* Action type */}
-        <div className="w-32 shrink-0">
-          <select
+        <div className="w-32 shrink-0">          <select
             value={step.actionType || 'Regular'}
             onChange={e => onChange({ ...step, actionType: e.target.value, params: {} })}
             disabled={disabled}
@@ -174,7 +173,7 @@ export function SensorStepRow({ step, index, triggerLogic, onChange, onRemove, d
         </div>
 
         {/* Params */}
-        <div className="w-36 shrink-0">
+        <div className="w-44 shrink-0">
           {step.actionType === 'Stepper Motor' && (
             <div className="flex gap-2">
               <div className="flex flex-col items-center gap-0.5">
@@ -250,7 +249,7 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
         </div>
 
         {/* Device */}
-        <div className="w-36 shrink-0">
+        <div className="w-44 shrink-0">
           <DeviceSelect
             value={step.deviceId}
             onChange={v => onChange({ ...step, deviceId: v })}

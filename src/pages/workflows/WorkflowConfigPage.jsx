@@ -254,61 +254,74 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
-      {/* Sticky top bar */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-5xl mx-auto">
-          {/* Row 1: back + name */}
-          <div className="flex items-center gap-3 mb-2">
-            <button
-              onClick={() => navigate('/workflows')}
-              className="text-sm text-[#2d6a4f] font-medium hover:underline shrink-0"
-            >
-              ‹ Library
-            </button>
+      {/* ── Sticky top bar ─────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+        <div className="w-full px-6 md:px-10 py-3">
+          {/* Single row on desktop, wraps on mobile */}
+          <div className="flex items-center gap-3 flex-wrap">
+          {/* Back link */}
+          <button
+            onClick={() => navigate('/workflows')}
+            className="text-sm text-[#2d6a4f] font-medium hover:underline shrink-0 flex items-center gap-1"
+          >
+            <span>‹</span>
+            <span className="hidden sm:inline">Workflow Library</span>
+            <span className="sm:hidden">Back</span>
+          </button>
+
+          <span className="text-gray-200 hidden sm:inline">|</span>
+
+          {/* Workflow name */}
+          <input
+            type="text"
+            value={workflow.name}
+            onChange={e => updateWorkflow({ ...workflow, name: e.target.value })}
+            disabled={disabled}
+            placeholder="Workflow name..."
+            data-error={saveAttempted && errors.includes('name') ? 'true' : 'false'}
+            className={cn(
+              'border rounded-xl px-3 py-1.5 text-base font-semibold bg-white',
+              'w-48 sm:w-64 md:flex-1 md:min-w-0 md:max-w-xs',
+              saveAttempted && errors.includes('name')
+                ? 'border-red-400 ring-1 ring-red-300'
+                : 'border-gray-200 focus:border-[#2d6a4f] focus:outline-none'
+            )}
+          />
+
+          {/* Status badge */}
+          <StatusBadge status={workflow.status === 'new' ? 'idle' : workflow.status} />
+
+          {/* Meta info */}
+          <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+            <span className="hidden sm:inline text-gray-200">·</span>
+            <span>{isSensor ? 'Sensor' : 'Schedule'}</span>
+            <span className="text-gray-200">·</span>
+            <span>{stepCountLabel}</span>
+            <span className="text-gray-200">·</span>
+            <span>Priority</span>
             <input
-              type="text"
-              value={workflow.name}
-              onChange={e => updateWorkflow({ ...workflow, name: e.target.value })}
-              disabled={disabled}
-              placeholder="Workflow name..."
-              data-error={saveAttempted && errors.includes('name') ? 'true' : 'false'}
-              className={cn(
-                'border rounded-xl px-3 py-1.5 text-sm font-semibold bg-white flex-1 min-w-0',
-                saveAttempted && errors.includes('name')
-                  ? 'border-red-400 ring-1 ring-red-300'
-                  : 'border-gray-200 focus:border-[#2d6a4f] focus:outline-none'
-              )}
+              type="number"
+              min="1" max="20"
+              value={workflow.priority}
+              onChange={e => updateWorkflow({ ...workflow, priority: Number(e.target.value) })}
+              disabled={!isEditable}
+              className="border border-gray-200 rounded-lg px-2 py-0.5 text-xs w-12 text-center disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
-          {/* Row 2: meta + toggle */}
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
-              <StatusBadge status={workflow.status === 'new' ? 'idle' : workflow.status} />
-              <span className="text-gray-300">·</span>
-              <span>{isSensor ? 'Sensor' : 'Schedule'}</span>
-              <span className="text-gray-300">·</span>
-              <span>{stepCountLabel}</span>
-              <span className="text-gray-300">·</span>
-              <span>Priority</span>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={workflow.priority}
-                onChange={e => updateWorkflow({ ...workflow, priority: Number(e.target.value) })}
-                disabled={!isEditable}
-                className="border border-gray-200 rounded-lg px-2 py-0.5 text-xs w-12 text-center"
-              />
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-gray-500">{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
-              <Toggle checked={workflow.enabled} onChange={handleToggle} />
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="px-4 py-4 max-w-5xl mx-auto">
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Toggle */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-gray-500">{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
+            <Toggle checked={workflow.enabled} onChange={handleToggle} />
+          </div>
+        </div>{/* /flex row */}
+        </div>{/* /max-w-6xl */}
+      </div>{/* /sticky header */}
+
+      <div className="w-full px-6 md:px-10 py-6">
         {/* Error status banner */}
         {isError && (() => {
           const failedSteps = workflow.steps
@@ -370,21 +383,18 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
 
           <div className="px-4 pb-5 border-t border-gray-50">
             {/* Column headers — desktop only */}
-            <div className="hidden md:flex items-center gap-3 px-2 py-2 text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-              <span className="w-8 shrink-0">#</span>
-              <span className="w-36 shrink-0">DEVICE</span>
+            <div className="hidden md:flex items-center gap-3 px-3 py-2 text-[10px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-50">
+              <span className="w-6 shrink-0">#</span>
+              <span className="w-44 shrink-0">DEVICE</span>
               {isSensor ? (
                 <>
-                  <span className="w-24 shrink-0">SENSOR</span>
-                  <span className="w-16 shrink-0 text-center">FROM</span>
-                  <span className="w-16 shrink-0 text-center">CURRENT</span>
-                  <span className="w-16 shrink-0 text-center">UNTIL</span>
-                  <span className="flex-1">ACTION TYPE</span>
-                  <span className="w-32 shrink-0">PARAMS</span>
+                  <span className="flex-1 min-w-[160px]">SENSOR · FROM · NOW · UNTIL</span>
+                  <span className="w-32 shrink-0">ACTION TYPE</span>
+                  <span className="w-44 shrink-0">PARAMS</span>
                 </>
               ) : (
                 <>
-                  <span className="w-20 shrink-0">ACTION</span>
+                  <span className="w-24 shrink-0">ACTION</span>
                   <span className="flex-1">PARAMS</span>
                 </>
               )}

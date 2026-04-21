@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils.js';
+import { DEVICES } from '@/lib/mockData.js';
 import { Toggle, StatusBadge, PriorityBadge, ConfirmDialog } from '@/widgets/ui.jsx';
+
+// Max content width — keeps the page from stretching too wide on large screens
+const INNER = 'w-full';
 
 function TriggerPill({ label }) {
   return (
-    <span className="inline-flex items-center bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 text-xs font-medium">
+    <span className="inline-flex items-center bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap">
       {label}
     </span>
   );
@@ -14,7 +18,7 @@ function TriggerPill({ label }) {
 function AndOrTag({ logic }) {
   return (
     <span className={cn(
-      'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold',
+      'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap',
       logic === 'AND' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
     )}>
       {logic}
@@ -28,15 +32,12 @@ function TriggerSummary({ workflow }) {
   if (workflow.trigger.type === 'sensor') {
     const sensors = workflow.trigger.sensors || [];
     const sensorNames = { s1: 'Temperature', s2: 'Humidity', s3: 'CO₂', s4: 'Light', s5: 'Soil', s6: 'pH', s7: 'EC' };
-    if (sensors.length === 0) return <span className="text-xs text-gray-400">No sensors</span>;
-
+    if (sensors.length === 0) return <span className="text-xs text-gray-400">No sensors configured</span>;
     return (
       <div className="flex items-center gap-1.5 flex-wrap">
         {sensors.map((s, idx) => (
           <span key={idx} className="flex items-center gap-1.5">
-            {idx > 0 && workflow.trigger.logic && (
-              <AndOrTag logic={workflow.trigger.logic} />
-            )}
+            {idx > 0 && workflow.trigger.logic && <AndOrTag logic={workflow.trigger.logic} />}
             <TriggerPill label={`${sensorNames[s.sensorId] || s.sensorId} ${s.operator === 'Higher than' ? '>' : '<'} ${s.value}${s.unit}`} />
           </span>
         ))}
@@ -46,7 +47,6 @@ function TriggerSummary({ workflow }) {
 
   const times = workflow.trigger.times || [];
   if (times.length === 0) return <span className="text-xs text-gray-400">No times set</span>;
-
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {times.map(t => <TriggerPill key={t} label={t} />)}
@@ -54,62 +54,104 @@ function TriggerSummary({ workflow }) {
   );
 }
 
-function WorkflowRow({ wf, onToggle, onDelete, onDeleteBlocked }) {
+// Detect if a workflow has a device conflict with another active workflow
+// (same device, device status indicates it's already in use by another entity)
+function hasConflictIndicator(wf, allWorkflows) {
+  if (!wf.steps?.length) return false;
+  const activeOthers = allWorkflows.filter(
+    o => o.id !== wf.id && ['running', 'synchronizing', 'idle'].includes(o.status)
+  );
+  return wf.steps.some(step => {
+    if (!step.deviceId) return false;
+    const device = DEVICES.find(d => d.id === step.deviceId);
+    if (!device) return false;
+    if (device.status === 'rule') return true;
+    // Another active workflow has same device and same priority
+    return activeOthers.some(other =>
+      other.priority === wf.priority &&
+      (other.steps || []).some(s => s.deviceId === step.deviceId)
+    );
+  });
+}
+
+function WorkflowRow({ wf, allWorkflows, onToggle, onDelete, onDeleteBlocked }) {
   const navigate = useNavigate();
   const isError = wf.status === 'error';
   const isDisabled = wf.status === 'disabled';
   const showTrash = !wf.isDefault;
+  const hasConflict = hasConflictIndicator(wf, allWorkflows);
 
   const handleDeleteClick = (e) => {
     e.stopPropagation();
-    if (!isDisabled) {
-      onDeleteBlocked(wf.name);
-    } else {
-      onDelete(wf);
-    }
+    if (!isDisabled) onDeleteBlocked(wf.name);
+    else onDelete(wf);
   };
 
   return (
     <div
       onClick={() => navigate(`/workflows/${wf.id}`)}
       className={cn(
-        'relative flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-gray-50 transition-colors',
-        isError && 'bg-red-50/60'
+        'relative flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-gray-50/80 transition-colors',
+        isError && 'bg-red-50/40'
       )}
     >
       {/* Error left stripe */}
-      {isError && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-l-2xl" />}
+      {isError && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />}
 
-      {/* Priority */}
+      {/* Priority badge */}
       <PriorityBadge priority={wf.priority} />
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className={cn('font-semibold text-sm truncate', isDisabled ? 'text-gray-400' : 'text-gray-900')}>
+      {/* Name + status  — fixed width on desktop so trigger column starts consistently */}
+      <div className="w-44 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={cn('font-semibold text-sm truncate max-w-[130px]', isDisabled ? 'text-gray-400' : 'text-gray-900')}>
             {wf.name}
           </span>
-          <StatusBadge status={wf.status} />
           {wf.isDefault && (
-            <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide">Default</span>
+            <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+              Default
+            </span>
           )}
         </div>
-        <div className={cn('mb-0.5', isDisabled && 'opacity-40')}>
-          <TriggerSummary workflow={wf} />
+        <div className="mt-0.5">
+          <StatusBadge status={wf.status} />
         </div>
-        <p className={cn('text-xs flex items-center gap-1', isDisabled ? 'text-gray-300' : 'text-gray-400')}>
-          <span>≡</span>
-          {wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}
-        </p>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-        <Toggle
-          checked={wf.enabled}
-          onChange={() => onToggle(wf)}
-          size="sm"
-        />
+      {/* Trigger summary — flex-1 fills available space */}
+      <div className={cn('flex-1 min-w-0', isDisabled && 'opacity-40')}>
+        <TriggerSummary workflow={wf} />
+      </div>
+
+      {/* Steps count */}
+      <div className={cn(
+        'shrink-0 text-xs flex items-center gap-1 w-20 hidden sm:flex',
+        isDisabled ? 'text-gray-300' : 'text-gray-400'
+      )}>
+        <span>≡</span>
+        <span>{wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}</span>
+      </div>
+
+      {/* Conflict indicator */}
+      {hasConflict && (
+        <div
+          title="Device conflict detected"
+          className="shrink-0 hidden sm:flex items-center gap-1 text-amber-600 text-xs font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Conflict
+        </div>
+      )}
+
+      {/* Toggle + label + delete */}
+      <div className="flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>
+        <span className={cn('text-xs hidden md:inline', isDisabled ? 'text-gray-400' : 'text-gray-600')}>
+          {wf.enabled ? 'Enabled' : 'Disabled'}
+        </span>
+        <Toggle checked={wf.enabled} onChange={() => onToggle(wf)} size="sm" />
         {showTrash && (
           <button
             onClick={handleDeleteClick}
@@ -119,7 +161,7 @@ function WorkflowRow({ wf, onToggle, onDelete, onDeleteBlocked }) {
                 ? 'text-red-400 hover:text-red-500 hover:bg-red-50'
                 : 'text-gray-200 hover:text-red-300 hover:bg-red-50'
             )}
-            title={isDisabled ? 'Delete' : 'Disable first to delete'}
+            title={isDisabled ? 'Delete workflow' : 'Disable first to delete'}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="3 6 5 6 21 6" />
@@ -135,7 +177,7 @@ function WorkflowRow({ wf, onToggle, onDelete, onDeleteBlocked }) {
 
 export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
   const navigate = useNavigate();
-  const [disableDialog, setDisableDialog] = useState(null); // { workflowId, name }
+  const [disableDialog, setDisableDialog] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(null);
   const [deleteBlockedName, setDeleteBlockedName] = useState(null);
 
@@ -155,19 +197,20 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
     } else if (wf.status === 'disabled') {
       onWorkflowsChange(workflows.map(w => w.id === wf.id ? { ...w, status: 'idle', enabled: true } : w));
     } else {
-      // idle / error / completed — disable directly
       onWorkflowsChange(workflows.map(w => w.id === wf.id ? { ...w, status: 'disabled', enabled: false } : w));
     }
   };
 
   const confirmDisable = () => {
-    onWorkflowsChange(workflows.map(w => w.id === disableDialog.workflowId ? { ...w, status: 'disabled', enabled: false } : w));
+    onWorkflowsChange(workflows.map(w =>
+      w.id === disableDialog.workflowId ? { ...w, status: 'disabled', enabled: false } : w
+    ));
     setDisableDialog(null);
   };
 
   const handleDeleteBlocked = (name) => {
     setDeleteBlockedName(name);
-    setTimeout(() => setDeleteBlockedName(null), 3000);
+    setTimeout(() => setDeleteBlockedName(null), 3500);
   };
 
   const confirmDelete = () => {
@@ -177,67 +220,73 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
 
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-5 py-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">WORKFLOWS</p>
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Workflow Library</h1>
-              <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">Browse active automations, open an existing workflow, or create a new one.</p>
-            </div>
-            <button
-              onClick={() => navigate('/workflows/new')}
-              className="flex items-center gap-1.5 bg-[#2d6a4f] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#245a42] transition-colors shadow-sm shrink-0"
-            >
-              <span className="text-base leading-none">+</span>
-              <span className="hidden sm:inline">Create Workflow</span>
-              <span className="sm:hidden">New</span>
-            </button>
+
+      {/* ── Page header ─────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100">
+        <div className={cn(INNER, 'px-6 md:px-10 py-5 flex items-center justify-between gap-4')}>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">WORKFLOWS</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Workflow Library</h1>
+            <p className="text-sm text-gray-400 mt-0.5 hidden md:block">
+              Browse active automations, open an existing workflow, or create a new one.
+            </p>
           </div>
+          <button
+            onClick={() => navigate('/workflows/new')}
+            className="flex items-center gap-2 bg-[#2d6a4f] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#245a42] transition-colors shadow-sm shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span className="hidden sm:inline">Create Workflow</span>
+            <span className="sm:hidden">New</span>
+          </button>
         </div>
       </div>
 
-      <div className="px-4 py-4 max-w-5xl mx-auto">
-        {/* Counters */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-white border border-green-100 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-bold text-[#2d6a4f]">{counts.active}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Active</p>
+      {/* ── Content ─────────────────────────────────────────── */}
+      <div className={cn(INNER, 'px-6 md:px-10 py-6')}>
+
+        {/* Counter cards */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white border border-green-100 rounded-2xl p-5 text-center shadow-sm">
+            <p className="text-3xl font-bold text-[#2d6a4f]">{counts.active}</p>
+            <p className="text-xs text-gray-500 mt-1 font-semibold uppercase tracking-wide">Active</p>
           </div>
-          <div className="bg-white border border-gray-100 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-bold text-gray-600">{counts.disabled}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Disabled</p>
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm">
+            <p className="text-3xl font-bold text-gray-500">{counts.disabled}</p>
+            <p className="text-xs text-gray-500 mt-1 font-semibold uppercase tracking-wide">Disabled</p>
           </div>
-          <div className={cn('rounded-2xl p-4 text-center border', counts.error > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100')}>
-            <p className={cn('text-2xl font-bold', counts.error > 0 ? 'text-red-500' : 'text-gray-600')}>{counts.error}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Error</p>
+          <div className={cn('rounded-2xl p-5 text-center border shadow-sm', counts.error > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100')}>
+            <p className={cn('text-3xl font-bold', counts.error > 0 ? 'text-red-500' : 'text-gray-500')}>{counts.error}</p>
+            <p className="text-xs text-gray-500 mt-1 font-semibold uppercase tracking-wide">Error</p>
           </div>
         </div>
 
-        {/* Delete blocked toast */}
+        {/* Delete-blocked toast */}
         {deleteBlockedName && (
-          <div className="flex items-center gap-2 p-3 mb-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+          <div className="flex items-center gap-2 p-3 mb-5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
             <span>⚠</span>
             <span>Disable <strong>{deleteBlockedName}</strong> before deleting it.</span>
           </div>
         )}
 
         {/* ACTIVE section */}
-        <div className="mb-4">
+        <div className="mb-5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">ACTIVE</p>
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50 shadow-sm">
-            {activeWorkflows.length === 0 ? (
-              <div className="px-5 py-8 text-center text-sm text-gray-400">No active workflows</div>
-            ) : activeWorkflows.map(wf => (
-              <WorkflowRow
-                key={wf.id}
-                wf={wf}
-                onToggle={handleToggle}
-                onDelete={wf => setDeleteDialog({ workflowId: wf.id, name: wf.name })}
-                onDeleteBlocked={handleDeleteBlocked}
-              />
-            ))}
+            {activeWorkflows.length === 0
+              ? <div className="px-6 py-10 text-center text-sm text-gray-400">No active workflows</div>
+              : activeWorkflows.map(wf => (
+                  <WorkflowRow
+                    key={wf.id} wf={wf}
+                    allWorkflows={workflows}
+                    onToggle={handleToggle}
+                    onDelete={wf => setDeleteDialog({ workflowId: wf.id, name: wf.name })}
+                    onDeleteBlocked={handleDeleteBlocked}
+                  />
+                ))
+            }
           </div>
         </div>
 
@@ -245,17 +294,18 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">INACTIVE</p>
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50 shadow-sm">
-            {inactiveWorkflows.length === 0 ? (
-              <div className="px-5 py-8 text-center text-sm text-gray-400">No disabled workflows</div>
-            ) : inactiveWorkflows.map(wf => (
-              <WorkflowRow
-                key={wf.id}
-                wf={wf}
-                onToggle={handleToggle}
-                onDelete={wf => setDeleteDialog({ workflowId: wf.id, name: wf.name })}
-                onDeleteBlocked={handleDeleteBlocked}
-              />
-            ))}
+            {inactiveWorkflows.length === 0
+              ? <div className="px-6 py-10 text-center text-sm text-gray-400">No disabled workflows</div>
+              : inactiveWorkflows.map(wf => (
+                  <WorkflowRow
+                    key={wf.id} wf={wf}
+                    allWorkflows={workflows}
+                    onToggle={handleToggle}
+                    onDelete={wf => setDeleteDialog({ workflowId: wf.id, name: wf.name })}
+                    onDeleteBlocked={handleDeleteBlocked}
+                  />
+                ))
+            }
           </div>
         </div>
       </div>
@@ -265,20 +315,15 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
         open={!!disableDialog}
         title="Disable Running Workflow?"
         description={`"${disableDialog?.name}" is currently running. All devices turned on by this Workflow will be switched off immediately.`}
-        confirmLabel="Disable"
-        confirmVariant="danger"
-        onConfirm={confirmDisable}
-        onCancel={() => setDisableDialog(null)}
+        confirmLabel="Disable" confirmVariant="danger"
+        onConfirm={confirmDisable} onCancel={() => setDisableDialog(null)}
       />
-
       <ConfirmDialog
         open={!!deleteDialog}
         title="Delete Workflow?"
         description={`Are you sure you want to permanently delete "${deleteDialog?.name}"?`}
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteDialog(null)}
+        confirmLabel="Delete" confirmVariant="danger"
+        onConfirm={confirmDelete} onCancel={() => setDeleteDialog(null)}
       />
     </div>
   );

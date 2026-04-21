@@ -131,7 +131,7 @@ export const initialWorkflows = [
           { sensorId: 's2', from: 40, currentValue: 38,   until: 35 },
         ],
         params: { times: 5, on: '00:20', off: '00:10' },
-        status: 'running',
+        status: 'waiting',
       },
     ],
   },
