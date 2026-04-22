@@ -38,7 +38,7 @@ function TriggerSummary({ workflow }) {
         {sensors.map((s, idx) => (
           <span key={idx} className="flex items-center gap-1.5">
             {idx > 0 && workflow.trigger.logic && <AndOrTag logic={workflow.trigger.logic} />}
-            <TriggerPill label={`${sensorNames[s.sensorId] || s.sensorId} ${s.operator === 'Higher than' ? '>' : '<'} ${s.value}${s.unit}`} />
+            <TriggerPill label={sensorNames[s.sensorId] || s.sensorId} />
           </span>
         ))}
       </div>

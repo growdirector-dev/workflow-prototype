@@ -19,7 +19,8 @@ function createNewSensorStep(triggerSensors) {
     actionType: 'Regular',
     sensorRows: (triggerSensors || []).map(s => ({
       sensorId: s.sensorId,
-      from: s.value,
+      operator: '>',
+      from: '',
       currentValue: null,
       until: '',
     })),
@@ -67,6 +68,9 @@ function validateWorkflow(wf) {
       // Until required for every sensor row (all action types)
       const missingUntil = sensorRows.some(r => r.until == null || r.until === '');
       if (missingUntil) e.push('until');
+      // From required for every sensor row
+      const missingFrom = sensorRows.some(r => r.from == null || r.from === '');
+      if (missingFrom) e.push('from');
 
       // Stepper Motor: run + wait required
       if (actionType === 'Stepper Motor') {
@@ -182,7 +186,7 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
           const existing = (step.sensorRows || []).find(r => r.sensorId === s.sensorId);
           return existing
             ? existing
-            : { sensorId: s.sensorId, from: s.value, currentValue: null, until: '' };
+            : { sensorId: s.sensorId, operator: '>', from: '', currentValue: null, until: '' };
         }),
       }));
       setWorkflow({ ...updated, steps: syncedSteps });

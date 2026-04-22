@@ -3,38 +3,20 @@ import { cn } from '@/lib/utils.js';
 import { SENSORS, DAYS } from '@/lib/mockData.js';
 import { ConfirmDialog } from '@/widgets/ui.jsx';
 
-// Sensor row for trigger
+// Sensor row for trigger — only sensor selection, no operator/value
 function SensorRow({ sensor, onRemove, onChange, disabled }) {
-  const sensorInfo = SENSORS.find(s => s.id === sensor.sensorId);
   return (
-    <div className="flex items-center gap-2 py-1.5 flex-wrap">
+    <div className="flex items-center gap-2 py-1.5">
       <select
         value={sensor.sensorId}
         onChange={e => onChange({ ...sensor, sensorId: e.target.value })}
         disabled={disabled}
-        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white min-w-[110px]"
+        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white min-w-[140px]"
       >
         {SENSORS.map(s => (
           <option key={s.id} value={s.id}>{s.name}</option>
         ))}
       </select>
-      <select
-        value={sensor.operator}
-        onChange={e => onChange({ ...sensor, operator: e.target.value })}
-        disabled={disabled}
-        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white"
-      >
-        <option>Higher than</option>
-        <option>Lower than</option>
-      </select>
-      <input
-        type="number"
-        value={sensor.value}
-        onChange={e => onChange({ ...sensor, value: Number(e.target.value) })}
-        disabled={disabled}
-        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-20 text-center"
-      />
-      <span className="text-sm text-gray-400 min-w-[40px]">{sensorInfo?.unit}</span>
       {!disabled && (
         <button
           onClick={onRemove}

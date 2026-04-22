@@ -118,8 +118,10 @@ function DeviceSelect({ value, onChange, disabled, conflicts }) {
 }
 
 // A single sensor data row within a step (FROM / CURRENT / UNTIL)
-function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, fromDisabled, untilError }) {
+function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, fromDisabled, untilError, fromError }) {
   const sensorInfo = SENSORS.find(s => s.id === row.sensorId);
+  const isFromDisabled = fromDisabled ?? disabled;
+  const showFromError = fromError && (row.from == null || row.from === '');
 
   return (
     <div>
@@ -134,6 +136,23 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, 
         {/* Sensor name */}
         <span className="text-sm text-gray-700 w-24 shrink-0 truncate">{sensorInfo?.name || row.sensorId}</span>
 
+        {/* OPERATOR */}
+        <div className="flex flex-col items-center gap-0.5">
+          <select
+            value={row.operator || '>'}
+            onChange={e => onUpdate(rIdx, 'operator', e.target.value)}
+            disabled={isFromDisabled}
+            className={cn(
+              'border rounded-lg px-1 py-1 text-sm bg-white w-12 text-center',
+              isFromDisabled ? 'border-gray-100 bg-gray-50 text-gray-400' : 'border-gray-200'
+            )}
+          >
+            <option value=">">&gt;</option>
+            <option value="<">&lt;</option>
+          </select>
+          <span className="text-[10px] text-gray-400">OP</span>
+        </div>
+
         {/* FROM */}
         <div className="flex flex-col items-center gap-0.5">
           <input
@@ -141,13 +160,13 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, 
             min="0"
             value={row.from ?? ''}
             onChange={e => onUpdate(rIdx, 'from', Number(e.target.value))}
-            disabled={fromDisabled ?? disabled}
+            disabled={isFromDisabled}
             className={cn(
               'border rounded-lg px-1.5 py-1 text-sm w-14 text-center',
-              (fromDisabled ?? disabled) ? 'border-gray-100 bg-gray-50 text-gray-400' : 'border-gray-200'
+              showFromError ? 'border-red-400' : isFromDisabled ? 'border-gray-100 bg-gray-50 text-gray-400' : 'border-gray-200'
             )}
           />
-          <span className="text-[10px] text-gray-400">FROM</span>
+          <span className={cn('text-[10px]', showFromError ? 'text-red-400' : 'text-gray-400')}>FROM</span>
         </div>
 
         {/* CURRENT */}
@@ -178,7 +197,7 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, 
 
         <span className="text-xs text-gray-400 shrink-0">{sensorInfo?.unit}</span>
 
-        {/* Remove sensor row — only shown when there are multiple or if editable */}
+        {/* Remove sensor row */}
         {!disabled && (
           <button
             onClick={() => onRemove(rIdx)}
@@ -216,12 +235,13 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
   const hasDeviceError = saveAttempted && !step.deviceId;
   const actionType = step.actionType || 'Regular';
   const hasUntilError   = saveAttempted && sensorRows.some(r => r.until == null || r.until === '');
+  const hasFromError    = saveAttempted && sensorRows.some(r => r.from == null || r.from === '');
   const hasRunError     = saveAttempted && actionType === 'Stepper Motor' && !step.params?.run;
   const hasWaitError    = saveAttempted && actionType === 'Stepper Motor' && !step.params?.wait;
   const hasTimesError   = saveAttempted && actionType === 'Loop' && !step.params?.times;
   const hasLoopOnError  = saveAttempted && actionType === 'Loop' && !step.params?.on;
   const hasLoopOffError = saveAttempted && actionType === 'Loop' && !step.params?.off;
-  const hasAnyError = hasDeviceError || hasUntilError || hasRunError || hasWaitError || hasTimesError || hasLoopOnError || hasLoopOffError;
+  const hasAnyError = hasDeviceError || hasUntilError || hasFromError || hasRunError || hasWaitError || hasTimesError || hasLoopOnError || hasLoopOffError;
 
   const statusColor =
     step.status === 'running' ? 'border-blue-400 bg-blue-50/30' :
@@ -269,6 +289,7 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
               disabled={disabled}
               fromDisabled={disabled || (step.status && step.status !== 'pending')}
               untilError={hasUntilError}
+              fromError={hasFromError}
             />
           ))}
           {/* Restore sensors that were removed */}
