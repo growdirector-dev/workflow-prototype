@@ -123,16 +123,7 @@ function WorkflowRow({ wf, allWorkflows, onToggle, onDelete, onDeleteBlocked }) 
         <TriggerSummary workflow={wf} />
       </div>
 
-      {/* Steps count */}
-      <div className={cn(
-        'shrink-0 text-xs flex items-center gap-1 w-20 hidden sm:flex',
-        isDisabled ? 'text-gray-300' : 'text-gray-400'
-      )}>
-        <span>≡</span>
-        <span>{wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}</span>
-      </div>
-
-      {/* Conflict indicator */}
+      {/* Conflict indicator — before step count for consistent row alignment */}
       {hasConflict && (
         <div
           title="Device conflict detected"
@@ -145,6 +136,15 @@ function WorkflowRow({ wf, allWorkflows, onToggle, onDelete, onDeleteBlocked }) 
           Conflict
         </div>
       )}
+
+      {/* Steps count */}
+      <div className={cn(
+        'shrink-0 text-xs flex items-center gap-1 w-20 hidden sm:flex',
+        isDisabled ? 'text-gray-300' : 'text-gray-400'
+      )}>
+        <span>≡</span>
+        <span>{wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}</span>
+      </div>
 
       {/* Toggle + label + delete */}
       <div className="flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>

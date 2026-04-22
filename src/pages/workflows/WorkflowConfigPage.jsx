@@ -432,10 +432,10 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
               <span className="w-44 shrink-0">DEVICE</span>
               {isSensor ? (
                 <>
-                  {/* Sensor column: name(96px) + DIR(48px) + FROM(56px) + NOW(56px) + UNTIL(56px) */}
+                  {/* Sensor column: name(96px) + OP(48px) + FROM(56px) + NOW(56px) + UNTIL(56px) */}
                   <div className="flex items-center gap-2 flex-1 min-w-[160px]">
                     <span className="w-24 shrink-0">SENSOR</span>
-                    <span className="w-12 text-center">DIR</span>
+                    <span className="w-12 text-center">OP</span>
                     <span className="w-14 text-center">FROM</span>
                     <span className="w-14 text-center">NOW</span>
                     <span className="w-14 text-center">UNTIL</span>
