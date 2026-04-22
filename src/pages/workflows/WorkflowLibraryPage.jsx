@@ -54,20 +54,20 @@ function TriggerSummary({ workflow }) {
   );
 }
 
-// Detect if a workflow has a device conflict with another active workflow
-// (same device, device status indicates it's already in use by another entity)
+// Detect if a workflow has a device conflict with another workflow.
+// Applies to all statuses including disabled — conflict persists until resolved.
 function hasConflictIndicator(wf, allWorkflows) {
   if (!wf.steps?.length) return false;
-  const activeOthers = allWorkflows.filter(
-    o => o.id !== wf.id && ['running', 'synchronizing', 'idle'].includes(o.status)
+  const others = allWorkflows.filter(
+    o => o.id !== wf.id && o.status !== 'disabled'
   );
   return wf.steps.some(step => {
     if (!step.deviceId) return false;
     const device = DEVICES.find(d => d.id === step.deviceId);
     if (!device) return false;
     if (device.status === 'rule') return true;
-    // Another active workflow has same device and same priority
-    return activeOthers.some(other =>
+    // Another workflow has same device and same priority
+    return others.some(other =>
       other.priority === wf.priority &&
       (other.steps || []).some(s => s.deviceId === step.deviceId)
     );
