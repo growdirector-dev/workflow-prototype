@@ -44,10 +44,44 @@ function validateWorkflow(wf) {
   if (wf.trigger.type === 'sensor' && (!wf.trigger.sensors || wf.trigger.sensors.length === 0)) errors.push('sensors');
   if (wf.trigger.type === 'schedule' && (!wf.trigger.times || wf.trigger.times.length === 0)) errors.push('times');
   if (!wf.steps || wf.steps.length === 0) errors.push('steps');
+
   const stepErrors = (wf.steps || []).map(s => {
     const e = [];
     if (!s.deviceId) e.push('device');
-    if (wf.trigger.type === 'schedule' && s.action === 'On' && !s.params?.duration) e.push('duration');
+
+    if (wf.trigger.type === 'schedule') {
+      // On action: duration required
+      if ((s.action === 'On' || !s.action) && !s.params?.duration) e.push('duration');
+      // Pulse action: on, off, cycles required
+      if (s.action === 'Pulse') {
+        if (!s.params?.on) e.push('pulse_on');
+        if (!s.params?.off) e.push('pulse_off');
+        if (!s.params?.cycles) e.push('pulse_cycles');
+      }
+    }
+
+    if (wf.trigger.type === 'sensor') {
+      const sensorRows = s.sensorRows || [];
+      const actionType = s.actionType || 'Regular';
+
+      // Until required for every sensor row (all action types)
+      const missingUntil = sensorRows.some(r => r.until == null || r.until === '');
+      if (missingUntil) e.push('until');
+
+      // Stepper Motor: run + wait required
+      if (actionType === 'Stepper Motor') {
+        if (!s.params?.run) e.push('run');
+        if (!s.params?.wait) e.push('wait');
+      }
+
+      // Loop: times + on + off required
+      if (actionType === 'Loop') {
+        if (!s.params?.times) e.push('times');
+        if (!s.params?.on) e.push('loop_on');
+        if (!s.params?.off) e.push('loop_off');
+      }
+    }
+
     return e;
   });
   return { errors, stepErrors };

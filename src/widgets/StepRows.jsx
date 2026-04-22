@@ -118,7 +118,7 @@ function DeviceSelect({ value, onChange, disabled, conflicts }) {
 }
 
 // A single sensor data row within a step (FROM / CURRENT / UNTIL)
-function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, fromDisabled }) {
+function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, fromDisabled, untilError }) {
   const sensorInfo = SENSORS.find(s => s.id === row.sensorId);
 
   return (
@@ -171,9 +171,9 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, 
             value={row.until ?? ''}
             onChange={e => onUpdate(rIdx, 'until', Number(e.target.value))}
             disabled={disabled}
-            className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-14 text-center"
+            className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', untilError && (row.until == null || row.until === '') ? 'border-red-400' : 'border-gray-200')}
           />
-          <span className="text-[10px] text-gray-400">UNTIL</span>
+          <span className={cn('text-[10px]', untilError && (row.until == null || row.until === '') ? 'text-red-400' : 'text-gray-400')}>UNTIL</span>
         </div>
 
         <span className="text-xs text-gray-400 shrink-0">{sensorInfo?.unit}</span>
@@ -214,6 +214,14 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
   };
 
   const hasDeviceError = saveAttempted && !step.deviceId;
+  const actionType = step.actionType || 'Regular';
+  const hasUntilError   = saveAttempted && sensorRows.some(r => r.until == null || r.until === '');
+  const hasRunError     = saveAttempted && actionType === 'Stepper Motor' && !step.params?.run;
+  const hasWaitError    = saveAttempted && actionType === 'Stepper Motor' && !step.params?.wait;
+  const hasTimesError   = saveAttempted && actionType === 'Loop' && !step.params?.times;
+  const hasLoopOnError  = saveAttempted && actionType === 'Loop' && !step.params?.on;
+  const hasLoopOffError = saveAttempted && actionType === 'Loop' && !step.params?.off;
+  const hasAnyError = hasDeviceError || hasUntilError || hasRunError || hasWaitError || hasTimesError || hasLoopOnError || hasLoopOffError;
 
   const statusColor =
     step.status === 'running' ? 'border-blue-400 bg-blue-50/30' :
@@ -224,8 +232,8 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
 
   return (
     <div
-      data-error={hasDeviceError ? 'true' : 'false'}
-      className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasDeviceError && 'border-red-400')}
+      data-error={hasAnyError ? 'true' : 'false'}
+      className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasAnyError && 'border-red-400')}
     >
       {/* Main row */}
       <div className="flex items-start gap-3 p-3">
@@ -260,6 +268,7 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
               onRemove={removeSensorRow}
               disabled={disabled}
               fromDisabled={disabled || (step.status && step.status !== 'pending')}
+              untilError={hasUntilError}
             />
           ))}
           {/* Restore sensors that were removed */}
@@ -298,13 +307,13 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
             <div className="flex gap-2">
               <div className="flex flex-col items-center gap-0.5">
                 <input type="text" placeholder="00:00" value={step.params?.run || ''} onChange={e => updateParam('run', e.target.value)} disabled={disabled}
-                  className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-16 text-center" />
-                <span className="text-[10px] text-gray-400">RUN (S)</span>
+                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasRunError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasRunError ? 'text-red-400' : 'text-gray-400')}>RUN (S)</span>
               </div>
               <div className="flex flex-col items-center gap-0.5">
                 <input type="text" placeholder="00:00" value={step.params?.wait || ''} onChange={e => updateParam('wait', e.target.value)} disabled={disabled}
-                  className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-16 text-center" />
-                <span className="text-[10px] text-gray-400">WAIT (S)</span>
+                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasWaitError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasWaitError ? 'text-red-400' : 'text-gray-400')}>WAIT (S)</span>
               </div>
             </div>
           )}
@@ -312,18 +321,18 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
             <div className="flex gap-1.5">
               <div className="flex flex-col items-center gap-0.5">
                 <input type="number" min="0" value={step.params?.times || ''} onChange={e => updateParam('times', Number(e.target.value))} disabled={disabled}
-                  className="border border-gray-200 rounded-lg px-1 py-1 text-sm w-12 text-center" />
-                <span className="text-[10px] text-gray-400">TIMES</span>
+                  className={cn('border rounded-lg px-1 py-1 text-sm w-12 text-center', hasTimesError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasTimesError ? 'text-red-400' : 'text-gray-400')}>TIMES</span>
               </div>
               <div className="flex flex-col items-center gap-0.5">
                 <input type="text" placeholder="00:00" value={step.params?.on || ''} onChange={e => updateParam('on', e.target.value)} disabled={disabled}
-                  className="border border-gray-200 rounded-lg px-1 py-1 text-sm w-14 text-center" />
-                <span className="text-[10px] text-gray-400">ON (S)</span>
+                  className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOnError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasLoopOnError ? 'text-red-400' : 'text-gray-400')}>ON (S)</span>
               </div>
               <div className="flex flex-col items-center gap-0.5">
                 <input type="text" placeholder="00:00" value={step.params?.off || ''} onChange={e => updateParam('off', e.target.value)} disabled={disabled}
-                  className="border border-gray-200 rounded-lg px-1 py-1 text-sm w-14 text-center" />
-                <span className="text-[10px] text-gray-400">OFF (S)</span>
+                  className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOffError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasLoopOffError ? 'text-red-400' : 'text-gray-400')}>OFF (S)</span>
               </div>
             </div>
           )}
@@ -348,8 +357,12 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
 
 export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, saveAttempted, stepConflicts }) {
   const updateParam = (key, val) => onChange({ ...step, params: { ...step.params, [key]: val } });
-  const hasDeviceError = saveAttempted && !step.deviceId;
+  const hasDeviceError   = saveAttempted && !step.deviceId;
   const hasDurationError = saveAttempted && (step.action === 'On' || !step.action) && !step.params?.duration;
+  const hasPulseOnError  = saveAttempted && step.action === 'Pulse' && !step.params?.on;
+  const hasPulseOffError = saveAttempted && step.action === 'Pulse' && !step.params?.off;
+  const hasCyclesError   = saveAttempted && step.action === 'Pulse' && !step.params?.cycles;
+  const hasAnyError = hasDeviceError || hasDurationError || hasPulseOnError || hasPulseOffError || hasCyclesError;
 
   const statusColor =
     step.status === 'running' ? 'border-blue-400 bg-blue-50/30' :
@@ -360,8 +373,8 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
 
   return (
     <div
-      data-error={(hasDeviceError || hasDurationError) ? 'true' : 'false'}
-      className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, (hasDeviceError || hasDurationError) && 'border-red-300')}
+      data-error={hasAnyError ? 'true' : 'false'}
+      className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasAnyError && 'border-red-300')}
     >
       <div className="flex items-start gap-3 p-3">
         {/* Step number */}
@@ -425,18 +438,18 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
             <div className="flex gap-2">
               <div className="flex flex-col items-center gap-0.5">
                 <input type="number" min="0" value={step.params?.on || ''} onChange={e => updateParam('on', Number(e.target.value))} disabled={disabled} placeholder="10"
-                  className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-14 text-center" />
-                <span className="text-[10px] text-gray-400">ON (s)</span>
+                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', hasPulseOnError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasPulseOnError ? 'text-red-400' : 'text-gray-400')}>ON (s)</span>
               </div>
               <div className="flex flex-col items-center gap-0.5">
                 <input type="number" min="0" value={step.params?.off || ''} onChange={e => updateParam('off', Number(e.target.value))} disabled={disabled} placeholder="30"
-                  className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-14 text-center" />
-                <span className="text-[10px] text-gray-400">OFF (s)</span>
+                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', hasPulseOffError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasPulseOffError ? 'text-red-400' : 'text-gray-400')}>OFF (s)</span>
               </div>
               <div className="flex flex-col items-center gap-0.5">
                 <input type="number" min="0" value={step.params?.cycles || ''} onChange={e => updateParam('cycles', Number(e.target.value))} disabled={disabled} placeholder="3"
-                  className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-12 text-center" />
-                <span className="text-[10px] text-gray-400">CYCLES</span>
+                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-12 text-center', hasCyclesError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasCyclesError ? 'text-red-400' : 'text-gray-400')}>CYCLES</span>
               </div>
             </div>
           )}

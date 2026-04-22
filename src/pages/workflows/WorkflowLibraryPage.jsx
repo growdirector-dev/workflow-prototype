@@ -185,10 +185,15 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
   const activeWorkflows = workflows.filter(w => activeStatuses.has(w.status)).sort((a, b) => a.priority - b.priority);
   const inactiveWorkflows = workflows.filter(w => w.status === 'disabled').sort((a, b) => a.priority - b.priority);
 
+  // Conflicts = workflows with Error status OR with a device conflict indicator
+  const conflictCount = workflows.filter(w =>
+    w.status === 'error' || hasConflictIndicator(w, workflows)
+  ).length;
+
   const counts = {
     active: activeWorkflows.length,
     disabled: inactiveWorkflows.length,
-    error: workflows.filter(w => w.status === 'error').length,
+    conflicts: conflictCount,
   };
 
   const handleToggle = (wf) => {
@@ -257,9 +262,9 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
             <p className="text-3xl font-bold text-gray-500">{counts.disabled}</p>
             <p className="text-xs text-gray-500 mt-1 font-semibold uppercase tracking-wide">Disabled</p>
           </div>
-          <div className={cn('rounded-2xl p-5 text-center border shadow-sm', counts.error > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100')}>
-            <p className={cn('text-3xl font-bold', counts.error > 0 ? 'text-red-500' : 'text-gray-500')}>{counts.error}</p>
-            <p className="text-xs text-gray-500 mt-1 font-semibold uppercase tracking-wide">Error</p>
+          <div className={cn('rounded-2xl p-5 text-center border shadow-sm', counts.conflicts > 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100')}>
+            <p className={cn('text-3xl font-bold', counts.conflicts > 0 ? 'text-amber-500' : 'text-gray-500')}>{counts.conflicts}</p>
+            <p className="text-xs text-gray-500 mt-1 font-semibold uppercase tracking-wide">Conflicts</p>
           </div>
         </div>
 
