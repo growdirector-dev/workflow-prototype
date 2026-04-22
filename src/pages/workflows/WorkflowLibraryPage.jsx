@@ -78,7 +78,7 @@ function WorkflowRow({ wf, allWorkflows, onToggle, onDelete, onDeleteBlocked }) 
   const navigate = useNavigate();
   const isError = wf.status === 'error';
   const isDisabled = wf.status === 'disabled';
-  const showTrash = !wf.isDefault;
+  const showTrash = true;
   const hasConflict = hasConflictIndicator(wf, allWorkflows);
 
   const handleDeleteClick = (e) => {
