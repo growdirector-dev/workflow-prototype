@@ -19,7 +19,6 @@ export function NotificationsSection({ workflow, onChange, disabled }) {
       >
         <div className="flex items-center gap-2">
           <button className="text-gray-400 text-sm">{expanded ? '▾' : '›'}</button>
-          <span className="text-sm">🔔</span>
           <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
         </div>
         <span className="text-sm text-[#2d6a4f] font-medium">Push · {onCount} on</span>

@@ -14,13 +14,14 @@ function DeviceSelect({ value, onChange, disabled, conflicts }) {
   const selected = DEVICES.find(d => d.id === value);
 
   // Position the fixed dropdown below the trigger button
-  const openDropdown = () => {
+  const openDropdown = (e) => {
+    e.preventDefault();
     if (disabled) return;
     const rect = btnRef.current?.getBoundingClientRect();
     if (rect) {
       setDropPos({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + 4,
+        left: rect.left,
         width: Math.max(rect.width, 220),
       });
     }
@@ -117,7 +118,7 @@ function DeviceSelect({ value, onChange, disabled, conflicts }) {
 }
 
 // A single sensor data row within a step (FROM / CURRENT / UNTIL)
-function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled }) {
+function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, fromDisabled }) {
   const sensorInfo = SENSORS.find(s => s.id === row.sensorId);
 
   return (
@@ -137,10 +138,14 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled }
         <div className="flex flex-col items-center gap-0.5">
           <input
             type="number"
+            min="0"
             value={row.from ?? ''}
             onChange={e => onUpdate(rIdx, 'from', Number(e.target.value))}
-            disabled={disabled}
-            className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-14 text-center"
+            disabled={fromDisabled ?? disabled}
+            className={cn(
+              'border rounded-lg px-1.5 py-1 text-sm w-14 text-center',
+              (fromDisabled ?? disabled) ? 'border-gray-100 bg-gray-50 text-gray-400' : 'border-gray-200'
+            )}
           />
           <span className="text-[10px] text-gray-400">FROM</span>
         </div>
@@ -162,6 +167,7 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled }
         <div className="flex flex-col items-center gap-0.5">
           <input
             type="number"
+            min="0"
             value={row.until ?? ''}
             onChange={e => onUpdate(rIdx, 'until', Number(e.target.value))}
             disabled={disabled}
@@ -253,6 +259,7 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
               onUpdate={updateSensorRow}
               onRemove={removeSensorRow}
               disabled={disabled}
+              fromDisabled={disabled || (step.status && step.status !== 'pending')}
             />
           ))}
           {/* Restore sensors that were removed */}
@@ -304,7 +311,7 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
           {step.actionType === 'Loop' && (
             <div className="flex gap-1.5">
               <div className="flex flex-col items-center gap-0.5">
-                <input type="number" value={step.params?.times || ''} onChange={e => updateParam('times', Number(e.target.value))} disabled={disabled}
+                <input type="number" min="0" value={step.params?.times || ''} onChange={e => updateParam('times', Number(e.target.value))} disabled={disabled}
                   className="border border-gray-200 rounded-lg px-1 py-1 text-sm w-12 text-center" />
                 <span className="text-[10px] text-gray-400">TIMES</span>
               </div>
@@ -393,6 +400,7 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
               <div className="flex gap-1.5 items-center">
                 <input
                   type="number"
+                  min="0"
                   value={step.params?.duration || ''}
                   onChange={e => updateParam('duration', Number(e.target.value))}
                   disabled={disabled}
@@ -416,17 +424,17 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
           {step.action === 'Pulse' && (
             <div className="flex gap-2">
               <div className="flex flex-col items-center gap-0.5">
-                <input type="number" value={step.params?.on || ''} onChange={e => updateParam('on', Number(e.target.value))} disabled={disabled} placeholder="10"
+                <input type="number" min="0" value={step.params?.on || ''} onChange={e => updateParam('on', Number(e.target.value))} disabled={disabled} placeholder="10"
                   className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-14 text-center" />
                 <span className="text-[10px] text-gray-400">ON (s)</span>
               </div>
               <div className="flex flex-col items-center gap-0.5">
-                <input type="number" value={step.params?.off || ''} onChange={e => updateParam('off', Number(e.target.value))} disabled={disabled} placeholder="30"
+                <input type="number" min="0" value={step.params?.off || ''} onChange={e => updateParam('off', Number(e.target.value))} disabled={disabled} placeholder="30"
                   className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-14 text-center" />
                 <span className="text-[10px] text-gray-400">OFF (s)</span>
               </div>
               <div className="flex flex-col items-center gap-0.5">
-                <input type="number" value={step.params?.cycles || ''} onChange={e => updateParam('cycles', Number(e.target.value))} disabled={disabled} placeholder="3"
+                <input type="number" min="0" value={step.params?.cycles || ''} onChange={e => updateParam('cycles', Number(e.target.value))} disabled={disabled} placeholder="3"
                   className="border border-gray-200 rounded-lg px-1.5 py-1 text-sm w-12 text-center" />
                 <span className="text-[10px] text-gray-400">CYCLES</span>
               </div>

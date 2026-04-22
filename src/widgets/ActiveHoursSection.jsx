@@ -63,7 +63,6 @@ export function ActiveHoursSection({ workflow, onChange, disabled }) {
       >
         <div className="flex items-center gap-2">
           <button className="text-gray-400 text-sm">{expanded ? '▾' : '›'}</button>
-          <span className="text-sm">🕐</span>
           <h3 className="text-sm font-semibold text-gray-800">Active Hours</h3>
         </div>
         <div onClick={e => e.stopPropagation()}>

@@ -59,7 +59,7 @@ function TimeChip({ time, onRemove, disabled }) {
   );
 }
 
-export function TriggerSection({ workflow, onChange, disabled }) {
+export function TriggerSection({ workflow, onChange, disabled, saveAttempted }) {
   const [newTime, setNewTime] = useState('');
   const [modeSwitchDialog, setModeSwitchDialog] = useState(null); // target type
   const isSensor = workflow.trigger.type === 'sensor';
@@ -180,9 +180,14 @@ export function TriggerSection({ workflow, onChange, disabled }) {
           </div>
 
           {/* ── Sensor mode ── */}
-          {isSensor && (
-            <div>
-              <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold mb-1">SENSORS (up to 2)</p>
+          {isSensor && (() => {
+            const hasSensorError = saveAttempted && sensors.length === 0;
+            return (
+            <div className={cn('rounded-xl transition-colors', hasSensorError && 'border border-red-300 bg-red-50/40 p-3 -mx-1')}>
+              <p className={cn('text-xs uppercase tracking-widest font-semibold mb-1', hasSensorError ? 'text-red-500' : 'text-gray-400')}>SENSORS (up to 2)</p>
+              {hasSensorError && (
+                <p className="text-xs text-red-500 mb-2">At least one sensor is required to save this Workflow.</p>
+              )}
               {sensors.map((sensor, idx) => (
                 <div key={idx}>
                   <SensorRow
@@ -252,7 +257,8 @@ export function TriggerSection({ workflow, onChange, disabled }) {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Schedule mode ── */}
           {isSchedule && (

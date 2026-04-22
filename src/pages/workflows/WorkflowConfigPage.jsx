@@ -361,7 +361,7 @@ export function WorkflowConfigPage({ workflows, onWorkflowsChange }) {
         )}
 
         {/* Trigger */}
-        <TriggerSection workflow={workflow} onChange={updateWorkflow} disabled={disabled} />
+        <TriggerSection workflow={workflow} onChange={updateWorkflow} disabled={disabled} saveAttempted={saveAttempted} />
 
         {/* Active Hours */}
         <ActiveHoursSection workflow={workflow} onChange={updateWorkflow} disabled={disabled} />

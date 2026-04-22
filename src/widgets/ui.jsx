@@ -97,16 +97,9 @@ export function StepStatusBadge({ status }) {
 }
 
 // Priority badge
-const PRIORITY_COLORS = {
-  1: 'bg-green-600 text-white',
-  2: 'bg-blue-600 text-white',
-  3: 'bg-amber-500 text-white',
-};
-
 export function PriorityBadge({ priority }) {
-  const colorClass = PRIORITY_COLORS[priority] || 'bg-gray-400 text-white';
   return (
-    <span className={cn('inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold shrink-0', colorClass)}>
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold shrink-0 bg-gray-200 text-gray-600">
       {priority}
     </span>
   );
