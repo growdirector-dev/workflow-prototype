@@ -19,7 +19,7 @@ function AndOrTag({ logic }) {
   return (
     <span className={cn(
       'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap',
-      logic === 'AND' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'
+      logic === 'AND' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
     )}>
       {logic}
     </span>
@@ -196,10 +196,18 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
     conflicts: conflictCount,
   };
 
+  const [enableBlockedMsg, setEnableBlockedMsg] = useState(null);
+
   const handleToggle = (wf) => {
     if (wf.status === 'running' || wf.status === 'synchronizing') {
       setDisableDialog({ workflowId: wf.id, name: wf.name });
     } else if (wf.status === 'disabled') {
+      // Block enabling if workflow has a device conflict
+      if (hasConflictIndicator(wf, workflows)) {
+        setEnableBlockedMsg(`"${wf.name}" has a device conflict and cannot be enabled until the conflict is resolved.`);
+        setTimeout(() => setEnableBlockedMsg(null), 4000);
+        return;
+      }
       onWorkflowsChange(workflows.map(w => w.id === wf.id ? { ...w, status: 'idle', enabled: true } : w));
     } else {
       onWorkflowsChange(workflows.map(w => w.id === wf.id ? { ...w, status: 'disabled', enabled: false } : w));
@@ -267,6 +275,14 @@ export function WorkflowLibraryPage({ workflows, onWorkflowsChange }) {
             <p className="text-xs text-gray-500 mt-1 font-semibold uppercase tracking-wide">Conflicts</p>
           </div>
         </div>
+
+        {/* Enable-blocked toast */}
+        {enableBlockedMsg && (
+          <div className="flex items-center gap-2 p-3 mb-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+            <span>⚠</span>
+            <span>{enableBlockedMsg}</span>
+          </div>
+        )}
 
         {/* Delete-blocked toast */}
         {deleteBlockedName && (

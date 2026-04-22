@@ -127,7 +127,10 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, 
     <div>
       {rIdx > 0 && (
         <div className="py-1">
-          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+          <span className={cn(
+            'text-xs font-bold px-2 py-0.5 rounded',
+            (triggerLogic || 'AND') === 'AND' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
+          )}>
             {triggerLogic || 'AND'}
           </span>
         </div>
@@ -136,8 +139,8 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, 
         {/* Sensor name */}
         <span className="text-sm text-gray-700 w-24 shrink-0 truncate">{sensorInfo?.name || row.sensorId}</span>
 
-        {/* OPERATOR */}
-        <div className="flex flex-col items-center gap-0.5">
+        {/* OPERATOR — direction > or < */}
+        <div className="w-12 shrink-0">
           <select
             value={row.operator || '>'}
             onChange={e => onUpdate(rIdx, 'operator', e.target.value)}
@@ -150,50 +153,40 @@ function SensorDataRow({ row, rIdx, triggerLogic, onUpdate, onRemove, disabled, 
             <option value=">">&gt;</option>
             <option value="<">&lt;</option>
           </select>
-          <span className="text-[10px] text-gray-400">OP</span>
         </div>
 
         {/* FROM */}
-        <div className="flex flex-col items-center gap-0.5">
-          <input
-            type="number"
-            min="0"
-            value={row.from ?? ''}
-            onChange={e => onUpdate(rIdx, 'from', Number(e.target.value))}
-            disabled={isFromDisabled}
-            className={cn(
-              'border rounded-lg px-1.5 py-1 text-sm w-14 text-center',
-              showFromError ? 'border-red-400' : isFromDisabled ? 'border-gray-100 bg-gray-50 text-gray-400' : 'border-gray-200'
-            )}
-          />
-          <span className={cn('text-[10px]', showFromError ? 'text-red-400' : 'text-gray-400')}>FROM</span>
-        </div>
+        <input
+          type="number"
+          min="0"
+          value={row.from ?? ''}
+          onChange={e => onUpdate(rIdx, 'from', Number(e.target.value))}
+          disabled={isFromDisabled}
+          className={cn(
+            'border rounded-lg px-1.5 py-1 text-sm w-14 text-center shrink-0',
+            showFromError ? 'border-red-400' : isFromDisabled ? 'border-gray-100 bg-gray-50 text-gray-400' : 'border-gray-200'
+          )}
+        />
 
         {/* CURRENT */}
-        <div className="flex flex-col items-center gap-0.5">
-          <span className={cn(
-            'rounded-lg px-1.5 py-1 text-sm w-14 text-center font-medium border block',
-            row.currentValue != null
-              ? 'border-teal-200 bg-teal-50 text-teal-700'
-              : 'border-gray-100 bg-gray-50 text-gray-300'
-          )}>
-            {row.currentValue != null ? row.currentValue : '–'}
-          </span>
-          <span className="text-[10px] text-gray-400">NOW</span>
-        </div>
+        <span className={cn(
+          'rounded-lg px-1.5 py-1 text-sm w-14 text-center font-medium border block shrink-0',
+          row.currentValue != null
+            ? 'border-teal-200 bg-teal-50 text-teal-700'
+            : 'border-gray-100 bg-gray-50 text-gray-300'
+        )}>
+          {row.currentValue != null ? row.currentValue : '–'}
+        </span>
 
         {/* UNTIL */}
-        <div className="flex flex-col items-center gap-0.5">
-          <input
-            type="number"
-            min="0"
-            value={row.until ?? ''}
-            onChange={e => onUpdate(rIdx, 'until', Number(e.target.value))}
-            disabled={disabled}
-            className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', untilError && (row.until == null || row.until === '') ? 'border-red-400' : 'border-gray-200')}
-          />
-          <span className={cn('text-[10px]', untilError && (row.until == null || row.until === '') ? 'text-red-400' : 'text-gray-400')}>UNTIL</span>
-        </div>
+        <input
+          type="number"
+          min="0"
+          value={row.until ?? ''}
+          onChange={e => onUpdate(rIdx, 'until', Number(e.target.value))}
+          disabled={disabled}
+          className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center shrink-0', untilError && (row.until == null || row.until === '') ? 'border-red-400' : 'border-gray-200')}
+        />
 
         <span className="text-xs text-gray-400 shrink-0">{sensorInfo?.unit}</span>
 
