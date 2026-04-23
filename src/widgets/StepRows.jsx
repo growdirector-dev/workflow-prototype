@@ -248,15 +248,15 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
       data-error={hasAnyError ? 'true' : 'false'}
       className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasAnyError && 'border-red-400')}
     >
-      {/* Main row */}
-      <div className="flex items-start gap-3 p-3">
+      {/* Main row — wraps on mobile */}
+      <div className="flex flex-wrap items-start gap-3 p-3">
         {/* Step number */}
         <div className="shrink-0 w-5 pt-2 text-center">
           <span className="text-xs font-semibold text-gray-400">{index + 1}</span>
         </div>
 
         {/* Device */}
-        <div className="w-44 shrink-0">
+        <div className="w-40 shrink-0">
           <DeviceSelect
             value={step.deviceId}
             onChange={v => onChange({ ...step, deviceId: v })}
@@ -266,8 +266,8 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
           {hasDeviceError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
         </div>
 
-        {/* Sensor rows with FROM/CURRENT/UNTIL */}
-        <div className="flex-1 min-w-[160px] space-y-1">
+        {/* Sensor rows with OP/FROM/CURRENT/UNTIL */}
+        <div className="flex-1 min-w-[220px] space-y-1">
           {sensorRows.length === 0 && (
             <span className="text-xs text-gray-400 italic">No sensors</span>
           )}
@@ -302,68 +302,70 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
           })}
         </div>
 
-        {/* Action type */}
-        <div className="w-32 shrink-0">          <select
-            value={step.actionType || 'Regular'}
-            onChange={e => onChange({ ...step, actionType: e.target.value, params: {} })}
-            disabled={disabled}
-            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-full"
-          >
-            <option>Regular</option>
-            <option>Stepper Motor</option>
-            <option>Loop</option>
-          </select>
+        {/* Action type + Params — wrap together on narrow screens */}
+        <div className="flex flex-wrap items-start gap-3">
+          {/* Action type */}
+          <div className="w-32 shrink-0">
+            <select
+              value={step.actionType || 'Regular'}
+              onChange={e => onChange({ ...step, actionType: e.target.value, params: {} })}
+              disabled={disabled}
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-full"
+            >
+              <option>Regular</option>
+              <option>Stepper Motor</option>
+              <option>Loop</option>
+            </select>
+          </div>
+
+          {/* Params */}
+          <div className="shrink-0">
+            {step.actionType === 'Stepper Motor' && (
+              <div className="flex gap-2 flex-wrap">
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="text" placeholder="00:00" value={step.params?.run || ''} onChange={e => updateParam('run', e.target.value)} disabled={disabled}
+                    className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasRunError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasRunError ? 'text-red-400' : 'text-gray-400')}>RUN (S)</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="text" placeholder="00:00" value={step.params?.wait || ''} onChange={e => updateParam('wait', e.target.value)} disabled={disabled}
+                    className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasWaitError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasWaitError ? 'text-red-400' : 'text-gray-400')}>WAIT (S)</span>
+                </div>
+              </div>
+            )}
+            {step.actionType === 'Loop' && (
+              <div className="flex gap-1.5 flex-wrap">
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="number" min="0" value={step.params?.times || ''} onChange={e => updateParam('times', Number(e.target.value))} disabled={disabled}
+                    className={cn('border rounded-lg px-1 py-1 text-sm w-12 text-center', hasTimesError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasTimesError ? 'text-red-400' : 'text-gray-400')}>TIMES</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="text" placeholder="00:00" value={step.params?.on || ''} onChange={e => updateParam('on', e.target.value)} disabled={disabled}
+                    className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOnError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasLoopOnError ? 'text-red-400' : 'text-gray-400')}>ON (S)</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="text" placeholder="00:00" value={step.params?.off || ''} onChange={e => updateParam('off', e.target.value)} disabled={disabled}
+                    className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOffError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasLoopOffError ? 'text-red-400' : 'text-gray-400')}>OFF (S)</span>
+                </div>
+              </div>
+            )}
+            {step.actionType === 'Regular' && (
+              <span className="text-sm text-gray-300">–</span>
+            )}
+          </div>
         </div>
 
-        {/* Params */}
-        <div className="w-44 shrink-0">
-          {step.actionType === 'Stepper Motor' && (
-            <div className="flex gap-2">
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="text" placeholder="00:00" value={step.params?.run || ''} onChange={e => updateParam('run', e.target.value)} disabled={disabled}
-                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasRunError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasRunError ? 'text-red-400' : 'text-gray-400')}>RUN (S)</span>
-              </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="text" placeholder="00:00" value={step.params?.wait || ''} onChange={e => updateParam('wait', e.target.value)} disabled={disabled}
-                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasWaitError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasWaitError ? 'text-red-400' : 'text-gray-400')}>WAIT (S)</span>
-              </div>
-            </div>
-          )}
-          {step.actionType === 'Loop' && (
-            <div className="flex gap-1.5">
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="number" min="0" value={step.params?.times || ''} onChange={e => updateParam('times', Number(e.target.value))} disabled={disabled}
-                  className={cn('border rounded-lg px-1 py-1 text-sm w-12 text-center', hasTimesError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasTimesError ? 'text-red-400' : 'text-gray-400')}>TIMES</span>
-              </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="text" placeholder="00:00" value={step.params?.on || ''} onChange={e => updateParam('on', e.target.value)} disabled={disabled}
-                  className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOnError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasLoopOnError ? 'text-red-400' : 'text-gray-400')}>ON (S)</span>
-              </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="text" placeholder="00:00" value={step.params?.off || ''} onChange={e => updateParam('off', e.target.value)} disabled={disabled}
-                  className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOffError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasLoopOffError ? 'text-red-400' : 'text-gray-400')}>OFF (S)</span>
-              </div>
-            </div>
-          )}
-          {step.actionType === 'Regular' && (
-            <span className="text-sm text-gray-300">–</span>
-          )}
-        </div>
-
-        {/* Status */}
-        <div className="w-16 shrink-0 text-right pt-1.5">
+        {/* Status + remove — always on the right */}
+        <div className="flex items-center gap-2 ml-auto shrink-0 pt-1">
           <StepStatusBadge status={step.status || 'pending'} />
+          {!disabled && (
+            <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-xl leading-none">×</button>
+          )}
         </div>
-
-        {/* Remove step */}
-        {!disabled && (
-          <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-xl leading-none shrink-0 pt-1">×</button>
-        )}
       </div>
     </div>
   );
@@ -390,14 +392,14 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
       data-error={hasAnyError ? 'true' : 'false'}
       className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasAnyError && 'border-red-300')}
     >
-      <div className="flex items-start gap-3 p-3">
+      <div className="flex flex-wrap items-start gap-3 p-3">
         {/* Step number */}
         <div className="shrink-0 w-5 pt-2 text-center">
           <span className="text-xs font-semibold text-gray-400">{index + 1}</span>
         </div>
 
         {/* Device */}
-        <div className="w-44 shrink-0">
+        <div className="w-40 shrink-0">
           <DeviceSelect
             value={step.deviceId}
             onChange={v => onChange({ ...step, deviceId: v })}
@@ -407,76 +409,78 @@ export function ScheduleStepRow({ step, index, onChange, onRemove, disabled, sav
           {hasDeviceError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
         </div>
 
-        {/* Action */}
-        <div className="w-20 shrink-0">
-          <select
-            value={step.action || 'On'}
-            onChange={e => onChange({ ...step, action: e.target.value, params: {} })}
-            disabled={disabled}
-            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-full"
-          >
-            <option>On</option>
-            <option>Pulse</option>
-          </select>
+        {/* Action + Params — wrap together */}
+        <div className="flex flex-wrap items-start gap-3 flex-1 min-w-[200px]">
+          {/* Action */}
+          <div className="w-20 shrink-0">
+            <select
+              value={step.action || 'On'}
+              onChange={e => onChange({ ...step, action: e.target.value, params: {} })}
+              disabled={disabled}
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-full"
+            >
+              <option>On</option>
+              <option>Pulse</option>
+            </select>
+          </div>
+
+          {/* Params */}
+          <div className="flex-1">
+            {(step.action === 'On' || !step.action) && (
+              <div className="flex flex-col gap-0.5">
+                <div className="flex gap-1.5 items-center flex-wrap">
+                  <input
+                    type="number"
+                    min="0"
+                    value={step.params?.duration || ''}
+                    onChange={e => updateParam('duration', Number(e.target.value))}
+                    disabled={disabled}
+                    placeholder="30"
+                    className={cn('border rounded-lg px-2 py-1.5 text-sm w-16 text-center', hasDurationError ? 'border-red-400' : 'border-gray-200')}
+                  />
+                  <select
+                    value={step.params?.unit || 'min'}
+                    onChange={e => updateParam('unit', e.target.value)}
+                    disabled={disabled}
+                    className="border border-gray-200 rounded-lg px-1.5 py-1.5 text-sm bg-white"
+                  >
+                    <option value="sec">sec</option>
+                    <option value="min">min</option>
+                    <option value="hours">h</option>
+                  </select>
+                </div>
+                {hasDurationError && <p className="text-[10px] text-red-500">Required</p>}
+              </div>
+            )}
+            {step.action === 'Pulse' && (
+              <div className="flex gap-2 flex-wrap">
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="number" min="0" value={step.params?.on || ''} onChange={e => updateParam('on', Number(e.target.value))} disabled={disabled} placeholder="10"
+                    className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', hasPulseOnError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasPulseOnError ? 'text-red-400' : 'text-gray-400')}>ON (s)</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="number" min="0" value={step.params?.off || ''} onChange={e => updateParam('off', Number(e.target.value))} disabled={disabled} placeholder="30"
+                    className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', hasPulseOffError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasPulseOffError ? 'text-red-400' : 'text-gray-400')}>OFF (s)</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <input type="number" min="0" value={step.params?.cycles || ''} onChange={e => updateParam('cycles', Number(e.target.value))} disabled={disabled} placeholder="3"
+                    className={cn('border rounded-lg px-1.5 py-1 text-sm w-12 text-center', hasCyclesError ? 'border-red-400' : 'border-gray-200')} />
+                  <span className={cn('text-[10px]', hasCyclesError ? 'text-red-400' : 'text-gray-400')}>CYCLES</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Params */}
-        <div className="flex-1">
-          {(step.action === 'On' || !step.action) && (
-            <div className="flex flex-col gap-0.5">
-              <div className="flex gap-1.5 items-center">
-                <input
-                  type="number"
-                  min="0"
-                  value={step.params?.duration || ''}
-                  onChange={e => updateParam('duration', Number(e.target.value))}
-                  disabled={disabled}
-                  placeholder="30"
-                  className={cn('border rounded-lg px-2 py-1.5 text-sm w-16 text-center', hasDurationError ? 'border-red-400' : 'border-gray-200')}
-                />
-                <select
-                  value={step.params?.unit || 'min'}
-                  onChange={e => updateParam('unit', e.target.value)}
-                  disabled={disabled}
-                  className="border border-gray-200 rounded-lg px-1.5 py-1.5 text-sm bg-white"
-                >
-                  <option value="sec">sec</option>
-                  <option value="min">min</option>
-                  <option value="hours">h</option>
-                </select>
-              </div>
-              {hasDurationError && <p className="text-[10px] text-red-500">Required</p>}
-            </div>
-          )}
-          {step.action === 'Pulse' && (
-            <div className="flex gap-2">
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="number" min="0" value={step.params?.on || ''} onChange={e => updateParam('on', Number(e.target.value))} disabled={disabled} placeholder="10"
-                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', hasPulseOnError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasPulseOnError ? 'text-red-400' : 'text-gray-400')}>ON (s)</span>
-              </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="number" min="0" value={step.params?.off || ''} onChange={e => updateParam('off', Number(e.target.value))} disabled={disabled} placeholder="30"
-                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-14 text-center', hasPulseOffError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasPulseOffError ? 'text-red-400' : 'text-gray-400')}>OFF (s)</span>
-              </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <input type="number" min="0" value={step.params?.cycles || ''} onChange={e => updateParam('cycles', Number(e.target.value))} disabled={disabled} placeholder="3"
-                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-12 text-center', hasCyclesError ? 'border-red-400' : 'border-gray-200')} />
-                <span className={cn('text-[10px]', hasCyclesError ? 'text-red-400' : 'text-gray-400')}>CYCLES</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Status */}
-        <div className="w-16 shrink-0 text-right pt-1.5">
+        {/* Status + remove */}
+        <div className="flex items-center gap-2 ml-auto shrink-0 pt-1">
           <StepStatusBadge status={step.status || 'pending'} />
+          {!disabled && (
+            <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-xl leading-none">×</button>
+          )}
         </div>
-
-        {!disabled && (
-          <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-xl leading-none shrink-0 pt-1">×</button>
-        )}
       </div>
     </div>
   );
