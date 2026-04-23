@@ -91,7 +91,7 @@ function WorkflowRow({ wf, allWorkflows, onToggle, onDelete, onDeleteBlocked }) 
     <div
       onClick={() => navigate(`/workflows/${wf.id}`)}
       className={cn(
-        'relative flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-gray-50/80 transition-colors',
+        'relative flex items-start gap-3 px-4 py-3 sm:px-6 sm:py-4 cursor-pointer hover:bg-gray-50/80 transition-colors',
         isError && 'bg-red-50/40'
       )}
     >
@@ -101,75 +101,82 @@ function WorkflowRow({ wf, allWorkflows, onToggle, onDelete, onDeleteBlocked }) 
       {/* Priority badge */}
       <PriorityBadge priority={wf.priority} />
 
-      {/* Name + status  — fixed width on desktop so trigger column starts consistently */}
-      <div className="w-44 shrink-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={cn('font-semibold text-sm truncate max-w-[130px]', isDisabled ? 'text-gray-400' : 'text-gray-900')}>
-            {wf.name}
-          </span>
-          {wf.isDefault && (
-            <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
-              Default
+      {/* Main content — two rows on mobile, single row on desktop */}
+      <div className="flex-1 min-w-0">
+
+        {/* Row 1: Name + status + right-side controls */}
+        <div className="flex items-center gap-2">
+          {/* Name + status */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn('font-semibold text-sm truncate max-w-[160px] sm:max-w-[130px]', isDisabled ? 'text-gray-400' : 'text-gray-900')}>
+                {wf.name}
+              </span>
+              {wf.isDefault && (
+                <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+                  Default
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5">
+              <StatusBadge status={wf.status} />
+            </div>
+          </div>
+
+          {/* Right controls — always visible */}
+          <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+            <span className={cn('text-xs hidden md:inline', isDisabled ? 'text-gray-400' : 'text-gray-600')}>
+              {wf.enabled ? 'Enabled' : 'Disabled'}
             </span>
-          )}
-        </div>
-        <div className="mt-0.5">
-          <StatusBadge status={wf.status} />
-        </div>
-      </div>
-
-      {/* Trigger summary — flex-1 fills available space */}
-      <div className={cn('flex-1 min-w-0', isDisabled && 'opacity-40')}>
-        <TriggerSummary workflow={wf} />
-      </div>
-
-      {/* Conflict indicator — before step count for consistent row alignment */}
-      {hasConflict && (
-        <div
-          title="Device conflict detected"
-          className="shrink-0 hidden sm:flex items-center gap-1 text-amber-600 text-xs font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full"
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          Conflict
-        </div>
-      )}
-
-      {/* Steps count */}
-      <div className={cn(
-        'shrink-0 text-xs flex items-center gap-1 w-20 hidden sm:flex',
-        isDisabled ? 'text-gray-300' : 'text-gray-400'
-      )}>
-        <span>≡</span>
-        <span>{wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}</span>
-      </div>
-
-      {/* Toggle + label + delete */}
-      <div className="flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>
-        <span className={cn('text-xs hidden md:inline', isDisabled ? 'text-gray-400' : 'text-gray-600')}>
-          {wf.enabled ? 'Enabled' : 'Disabled'}
-        </span>
-        <Toggle checked={wf.enabled} onChange={() => onToggle(wf)} size="sm" />
-        {showTrash && (
-          <button
-            onClick={handleDeleteClick}
-            className={cn(
-              'p-1.5 rounded-lg transition-colors',
-              isDisabled
-                ? 'text-red-400 hover:text-red-500 hover:bg-red-50'
-                : 'text-gray-200 hover:text-red-300 hover:bg-red-50'
+            <Toggle checked={wf.enabled} onChange={() => onToggle(wf)} size="sm" />
+            {showTrash && (
+              <button
+                onClick={handleDeleteClick}
+                className={cn(
+                  'p-1.5 rounded-lg transition-colors',
+                  isDisabled
+                    ? 'text-red-400 hover:text-red-500 hover:bg-red-50'
+                    : 'text-gray-200 hover:text-red-300 hover:bg-red-50'
+                )}
+                title={isDisabled ? 'Delete workflow' : 'Disable first to delete'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v6M14 11v6M9 6V4h6v2" />
+                </svg>
+              </button>
             )}
-            title={isDisabled ? 'Delete workflow' : 'Disable first to delete'}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14H6L5 6" />
-              <path d="M10 11v6M14 11v6M9 6V4h6v2" />
-            </svg>
-          </button>
-        )}
+          </div>
+        </div>
+
+        {/* Row 2: Trigger + conflict + step count */}
+        <div className={cn('flex items-center gap-3 mt-1.5 flex-wrap', isDisabled && 'opacity-40')}>
+          <div className="flex-1 min-w-0">
+            <TriggerSummary workflow={wf} />
+          </div>
+
+          {/* Conflict indicator */}
+          {hasConflict && (
+            <div
+              title="Device conflict detected"
+              className="shrink-0 flex items-center gap-1 text-amber-600 text-xs font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              Conflict
+            </div>
+          )}
+
+          {/* Steps count */}
+          <div className={cn('shrink-0 text-xs flex items-center gap-1', isDisabled ? 'text-gray-300' : 'text-gray-400')}>
+            <span>≡</span>
+            <span>{wf.steps.length} {wf.steps.length === 1 ? 'step' : 'steps'}</span>
+          </div>
+        </div>
+
       </div>
     </div>
   );
