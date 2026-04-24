@@ -248,69 +248,40 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
       data-error={hasAnyError ? 'true' : 'false'}
       className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasAnyError && 'border-red-400')}
     >
-      {/* Main row — wraps on mobile */}
-      <div className="flex flex-wrap items-start gap-3 p-3">
-        {/* Step number */}
-        <div className="shrink-0 w-5 pt-2 text-center">
-          <span className="text-xs font-semibold text-gray-400">{index + 1}</span>
-        </div>
+      {/* Mobile: vertical stack. Desktop: horizontal row */}
+      <div className="p-3 space-y-3">
 
-        {/* Device */}
-        <div className="w-40 shrink-0">
-          <DeviceSelect
-            value={step.deviceId}
-            onChange={v => onChange({ ...step, deviceId: v })}
-            disabled={disabled}
-            conflicts={stepConflicts}
-          />
-          {hasDeviceError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
-        </div>
+        {/* Row 1: Step number + Device + Status */}
+        <div className="flex items-start gap-3">
+          <span className="text-xs font-semibold text-gray-400 w-5 pt-2 text-center shrink-0">{index + 1}</span>
 
-        {/* Sensor rows with OP/FROM/CURRENT/UNTIL */}
-        <div className="flex-1 min-w-[220px] space-y-1">
-          {sensorRows.length === 0 && (
-            <span className="text-xs text-gray-400 italic">No sensors</span>
-          )}
-          {sensorRows.map((row, rIdx) => (
-            <SensorDataRow
-              key={rIdx}
-              row={row}
-              rIdx={rIdx}
-              triggerLogic={triggerLogic}
-              onUpdate={updateSensorRow}
-              onRemove={removeSensorRow}
+          <div className="flex-1 min-w-0">
+            <DeviceSelect
+              value={step.deviceId}
+              onChange={v => onChange({ ...step, deviceId: v })}
               disabled={disabled}
-              fromDisabled={disabled || (step.status && step.status !== 'pending')}
-              untilError={hasUntilError}
-              fromError={hasFromError}
+              conflicts={stepConflicts}
             />
-          ))}
-          {/* Restore sensors that were removed */}
-          {!disabled && missingSensors.map(ts => {
-            const sInfo = SENSORS.find(s => s.id === ts.sensorId);
-            return (
-              <button
-                key={ts.sensorId}
-                type="button"
-                onClick={() => restoreSensor(ts)}
-                className="text-xs text-[#2d6a4f] font-medium hover:underline mt-0.5 flex items-center gap-1"
-              >
-                <span>+</span>
-                <span>{sInfo?.name || ts.sensorId}</span>
-              </button>
-            );
-          })}
+            {hasDeviceError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <StepStatusBadge status={step.status || 'pending'} />
+            {!disabled && (
+              <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+            )}
+          </div>
         </div>
 
-        {/* Action type + Params — wrap together on narrow screens */}
-        <div className="flex flex-wrap items-start gap-3">
-          {/* Action type */}
-          <div className="w-32 shrink-0">
+        {/* Row 2: Action type + Params */}
+        <div className="flex flex-wrap items-start gap-3 pl-8">
+          <div className="shrink-0">
+            <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Action type</p>
             <select
               value={step.actionType || 'Regular'}
               onChange={e => onChange({ ...step, actionType: e.target.value, params: {} })}
               disabled={disabled}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-full"
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-32"
             >
               <option>Regular</option>
               <option>Stepper Motor</option>
@@ -319,9 +290,10 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
           </div>
 
           {/* Params */}
-          <div className="shrink-0">
-            {step.actionType === 'Stepper Motor' && (
-              <div className="flex gap-2 flex-wrap">
+          {step.actionType === 'Stepper Motor' && (
+            <div className="shrink-0">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Params</p>
+              <div className="flex gap-2">
                 <div className="flex flex-col items-center gap-0.5">
                   <input type="text" placeholder="00:00" value={step.params?.run || ''} onChange={e => updateParam('run', e.target.value)} disabled={disabled}
                     className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasRunError ? 'border-red-400' : 'border-gray-200')} />
@@ -333,9 +305,13 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
                   <span className={cn('text-[10px]', hasWaitError ? 'text-red-400' : 'text-gray-400')}>WAIT (S)</span>
                 </div>
               </div>
-            )}
-            {step.actionType === 'Loop' && (
-              <div className="flex gap-1.5 flex-wrap">
+            </div>
+          )}
+
+          {step.actionType === 'Loop' && (
+            <div className="shrink-0">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Params</p>
+              <div className="flex gap-1.5">
                 <div className="flex flex-col items-center gap-0.5">
                   <input type="number" min="0" value={step.params?.times || ''} onChange={e => updateParam('times', Number(e.target.value))} disabled={disabled}
                     className={cn('border rounded-lg px-1 py-1 text-sm w-12 text-center', hasTimesError ? 'border-red-400' : 'border-gray-200')} />
@@ -352,20 +328,62 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
                   <span className={cn('text-[10px]', hasLoopOffError ? 'text-red-400' : 'text-gray-400')}>OFF (S)</span>
                 </div>
               </div>
-            )}
-            {step.actionType === 'Regular' && (
-              <span className="text-sm text-gray-300">–</span>
-            )}
-          </div>
-        </div>
-
-        {/* Status + remove — always on the right */}
-        <div className="flex items-center gap-2 ml-auto shrink-0 pt-1">
-          <StepStatusBadge status={step.status || 'pending'} />
-          {!disabled && (
-            <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-xl leading-none">×</button>
+            </div>
           )}
         </div>
+
+        {/* Row 3: Sensor rows with column headers */}
+        {(sensorRows.length > 0 || missingSensors.length > 0) && (
+          <div className="pl-8 space-y-1">
+            {/* Mini column headers for sensor rows */}
+            {sensorRows.length > 0 && (
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-gray-400 font-bold pb-1">
+                <span className="w-24 shrink-0">Sensor</span>
+                <span className="w-12 text-center">OP</span>
+                <span className="w-14 text-center">From</span>
+                <span className="w-14 text-center">Now</span>
+                <span className="w-14 text-center">Until</span>
+              </div>
+            )}
+            {sensorRows.map((row, rIdx) => (
+              <SensorDataRow
+                key={rIdx}
+                row={row}
+                rIdx={rIdx}
+                triggerLogic={triggerLogic}
+                onUpdate={updateSensorRow}
+                onRemove={removeSensorRow}
+                disabled={disabled}
+                fromDisabled={disabled || (step.status && step.status !== 'pending')}
+                untilError={hasUntilError}
+                fromError={hasFromError}
+              />
+            ))}
+            {!disabled && missingSensors.map(ts => {
+              const sInfo = SENSORS.find(s => s.id === ts.sensorId);
+              return (
+                <button
+                  key={ts.sensorId}
+                  type="button"
+                  onClick={() => restoreSensor(ts)}
+                  className="text-xs text-[#2d6a4f] font-medium hover:underline mt-0.5 flex items-center gap-1"
+                >
+                  <span>+</span>
+                  <span>{sInfo?.name || ts.sensorId}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Conflict banners */}
+        {(stepConflicts || []).map((c, i) => (
+          <div key={i} className="pl-8">
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+              {c.message}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
