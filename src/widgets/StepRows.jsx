@@ -376,14 +376,14 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
           </div>
         )}
 
-        {/* Conflict banners */}
-        {(stepConflicts || []).map((c, i) => (
-          <div key={i} className="pl-8">
+        {/* Conflict banner for this step's device */}
+        {stepConflicts?.[step.deviceId] && (
+          <div className="pl-8">
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
-              {c.message}
+              {stepConflicts[step.deviceId]}
             </div>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
