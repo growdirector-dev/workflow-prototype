@@ -221,7 +221,7 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
   );
 
   const restoreSensor = (ts) => {
-    const newRow = { sensorId: ts.sensorId, from: ts.value, currentValue: null, until: '' };
+    const newRow = { sensorId: ts.sensorId, operator: '>', from: '', currentValue: null, until: '' };
     onChange({ ...step, sensorRows: [...sensorRows, newRow] });
   };
 
@@ -248,48 +248,120 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
       data-error={hasAnyError ? 'true' : 'false'}
       className={cn('border rounded-2xl overflow-hidden transition-colors', statusColor, hasAnyError && 'border-red-400')}
     >
-      {/* Mobile: vertical stack. Desktop: horizontal row */}
-      <div className="p-3 space-y-3">
+      {/* ── DESKTOP layout (md+): horizontal row matching column headers ── */}
+      <div className="hidden md:flex items-start gap-3 p-3">
+        {/* # */}
+        <div className="shrink-0 w-6 pt-2 text-center">
+          <span className="text-xs font-semibold text-gray-400">{index + 1}</span>
+        </div>
 
-        {/* Row 1: Step number + Device + Status */}
+        {/* DEVICE */}
+        <div className="w-44 shrink-0">
+          <DeviceSelect value={step.deviceId} onChange={v => onChange({ ...step, deviceId: v })} disabled={disabled} conflicts={stepConflicts} />
+          {hasDeviceError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
+        </div>
+
+        {/* SENSOR / OP / FROM / NOW / UNTIL */}
+        <div className="flex-1 min-w-0 space-y-1">
+          {sensorRows.length === 0 && <span className="text-xs text-gray-400 italic">No sensors</span>}
+          {sensorRows.map((row, rIdx) => (
+            <SensorDataRow key={rIdx} row={row} rIdx={rIdx} triggerLogic={triggerLogic}
+              onUpdate={updateSensorRow} onRemove={removeSensorRow} disabled={disabled}
+              fromDisabled={disabled || (step.status && step.status !== 'pending')}
+              untilError={hasUntilError} fromError={hasFromError} />
+          ))}
+          {!disabled && missingSensors.map(ts => {
+            const sInfo = SENSORS.find(s => s.id === ts.sensorId);
+            return (
+              <button key={ts.sensorId} type="button" onClick={() => restoreSensor(ts)}
+                className="text-xs text-[#2d6a4f] font-medium hover:underline flex items-center gap-1">
+                <span>+</span><span>{sInfo?.name || ts.sensorId}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ACTION TYPE */}
+        <div className="w-32 shrink-0">
+          <select value={step.actionType || 'Regular'} onChange={e => onChange({ ...step, actionType: e.target.value, params: {} })}
+            disabled={disabled} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-full">
+            <option>Regular</option>
+            <option>Stepper Motor</option>
+            <option>Loop</option>
+          </select>
+        </div>
+
+        {/* PARAMS */}
+        <div className="w-44 shrink-0">
+          {step.actionType === 'Stepper Motor' && (
+            <div className="flex gap-2">
+              <div className="flex flex-col items-center gap-0.5">
+                <input type="text" placeholder="00:00" value={step.params?.run || ''} onChange={e => updateParam('run', e.target.value)} disabled={disabled}
+                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasRunError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasRunError ? 'text-red-400' : 'text-gray-400')}>RUN (S)</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <input type="text" placeholder="00:00" value={step.params?.wait || ''} onChange={e => updateParam('wait', e.target.value)} disabled={disabled}
+                  className={cn('border rounded-lg px-1.5 py-1 text-sm w-16 text-center', hasWaitError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasWaitError ? 'text-red-400' : 'text-gray-400')}>WAIT (S)</span>
+              </div>
+            </div>
+          )}
+          {step.actionType === 'Loop' && (
+            <div className="flex gap-1.5">
+              <div className="flex flex-col items-center gap-0.5">
+                <input type="number" min="0" value={step.params?.times || ''} onChange={e => updateParam('times', Number(e.target.value))} disabled={disabled}
+                  className={cn('border rounded-lg px-1 py-1 text-sm w-12 text-center', hasTimesError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasTimesError ? 'text-red-400' : 'text-gray-400')}>TIMES</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <input type="text" placeholder="00:00" value={step.params?.on || ''} onChange={e => updateParam('on', e.target.value)} disabled={disabled}
+                  className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOnError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasLoopOnError ? 'text-red-400' : 'text-gray-400')}>ON (S)</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <input type="text" placeholder="00:00" value={step.params?.off || ''} onChange={e => updateParam('off', e.target.value)} disabled={disabled}
+                  className={cn('border rounded-lg px-1 py-1 text-sm w-14 text-center', hasLoopOffError ? 'border-red-400' : 'border-gray-200')} />
+                <span className={cn('text-[10px]', hasLoopOffError ? 'text-red-400' : 'text-gray-400')}>OFF (S)</span>
+              </div>
+            </div>
+          )}
+          {(!step.actionType || step.actionType === 'Regular') && <span className="text-sm text-gray-300">–</span>}
+        </div>
+
+        {/* STATUS + remove */}
+        <div className="flex items-center gap-2 shrink-0 w-16 justify-end pt-1">
+          <StepStatusBadge status={step.status || 'pending'} />
+          {!disabled && <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-xl leading-none">×</button>}
+        </div>
+      </div>
+
+      {/* ── MOBILE layout (<md): vertical stack ── */}
+      <div className="md:hidden p-3 space-y-3">
+        {/* Row 1: number + device + status + remove */}
         <div className="flex items-start gap-3">
           <span className="text-xs font-semibold text-gray-400 w-5 pt-2 text-center shrink-0">{index + 1}</span>
-
           <div className="flex-1 min-w-0">
-            <DeviceSelect
-              value={step.deviceId}
-              onChange={v => onChange({ ...step, deviceId: v })}
-              disabled={disabled}
-              conflicts={stepConflicts}
-            />
+            <DeviceSelect value={step.deviceId} onChange={v => onChange({ ...step, deviceId: v })} disabled={disabled} conflicts={stepConflicts} />
             {hasDeviceError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
           </div>
-
           <div className="flex items-center gap-2 shrink-0">
             <StepStatusBadge status={step.status || 'pending'} />
-            {!disabled && (
-              <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
-            )}
+            {!disabled && <button onClick={onRemove} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>}
           </div>
         </div>
 
-        {/* Row 2: Action type + Params */}
+        {/* Row 2: action type + params */}
         <div className="flex flex-wrap items-start gap-3 pl-8">
           <div className="shrink-0">
             <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Action type</p>
-            <select
-              value={step.actionType || 'Regular'}
-              onChange={e => onChange({ ...step, actionType: e.target.value, params: {} })}
-              disabled={disabled}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-32"
-            >
+            <select value={step.actionType || 'Regular'} onChange={e => onChange({ ...step, actionType: e.target.value, params: {} })}
+              disabled={disabled} className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white w-32">
               <option>Regular</option>
               <option>Stepper Motor</option>
               <option>Loop</option>
             </select>
           </div>
-
-          {/* Params */}
           {step.actionType === 'Stepper Motor' && (
             <div className="shrink-0">
               <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Params</p>
@@ -307,7 +379,6 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
               </div>
             </div>
           )}
-
           {step.actionType === 'Loop' && (
             <div className="shrink-0">
               <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">Params</p>
@@ -332,10 +403,9 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
           )}
         </div>
 
-        {/* Row 3: Sensor rows with column headers */}
+        {/* Row 3: sensor rows */}
         {(sensorRows.length > 0 || missingSensors.length > 0) && (
           <div className="pl-8 space-y-1">
-            {/* Mini column headers for sensor rows */}
             {sensorRows.length > 0 && (
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-gray-400 font-bold pb-1">
                 <span className="w-24 shrink-0">Sensor</span>
@@ -346,37 +416,24 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
               </div>
             )}
             {sensorRows.map((row, rIdx) => (
-              <SensorDataRow
-                key={rIdx}
-                row={row}
-                rIdx={rIdx}
-                triggerLogic={triggerLogic}
-                onUpdate={updateSensorRow}
-                onRemove={removeSensorRow}
-                disabled={disabled}
+              <SensorDataRow key={rIdx} row={row} rIdx={rIdx} triggerLogic={triggerLogic}
+                onUpdate={updateSensorRow} onRemove={removeSensorRow} disabled={disabled}
                 fromDisabled={disabled || (step.status && step.status !== 'pending')}
-                untilError={hasUntilError}
-                fromError={hasFromError}
-              />
+                untilError={hasUntilError} fromError={hasFromError} />
             ))}
             {!disabled && missingSensors.map(ts => {
               const sInfo = SENSORS.find(s => s.id === ts.sensorId);
               return (
-                <button
-                  key={ts.sensorId}
-                  type="button"
-                  onClick={() => restoreSensor(ts)}
-                  className="text-xs text-[#2d6a4f] font-medium hover:underline mt-0.5 flex items-center gap-1"
-                >
-                  <span>+</span>
-                  <span>{sInfo?.name || ts.sensorId}</span>
+                <button key={ts.sensorId} type="button" onClick={() => restoreSensor(ts)}
+                  className="text-xs text-[#2d6a4f] font-medium hover:underline flex items-center gap-1">
+                  <span>+</span><span>{sInfo?.name || ts.sensorId}</span>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* Conflict banner for this step's device */}
+        {/* Conflict banner */}
         {stepConflicts?.[step.deviceId] && (
           <div className="pl-8">
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
@@ -385,6 +442,15 @@ export function SensorStepRow({ step, index, triggerSensors, triggerLogic, onCha
           </div>
         )}
       </div>
+
+      {/* Conflict banner desktop */}
+      {stepConflicts?.[step.deviceId] && (
+        <div className="hidden md:block px-6 pb-3">
+          <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+            {stepConflicts[step.deviceId]}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
